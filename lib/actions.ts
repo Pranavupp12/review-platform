@@ -179,7 +179,9 @@ export async function createReview(prevState: any, formData: FormData) {
           const buffer = Buffer.from(arrayBuffer);
           return new Promise<string>((resolve, reject) => {
             cloudinary.uploader.upload_stream(
-              { folder: "review_images" },
+              { folder: "review_images",
+                transformation: [{ width: 800, crop: "limit", quality: "auto", fetch_format: "auto" }]
+               },
               (error, result) => {
                 if (error) reject(error);
                 else resolve(result!.secure_url);
@@ -357,7 +359,7 @@ export async function updateUserProfile(prevState: any, formData: FormData) {
       // Upload to Cloudinary via Promise
       const uploadResult = await new Promise<any>((resolve, reject) => {
         cloudinary.uploader.upload_stream(
-          { folder: "user_avatars", transformation: [{ width: 400, height: 400, crop: "fill" }] },
+          { folder: "user_avatars", transformation: [{ width: 400, height: 400, crop: "fill",quality: "auto", fetch_format: "auto" }] },
           (error, result) => {
             if (error) reject(error);
             else resolve(result);
@@ -559,14 +561,22 @@ export async function adminDeleteCompany(companyId: string) {
 // --- 12. ADMIN: CREATE/UPDATE COMPANY ---
 export async function upsertCompany(prevState: any, formData: FormData) {
   const session = await auth();
-  if (session?.user?.role !== 'ADMIN') return { error: "Unauthorized" };
+  
+  // ✅ 1. CHANGE: Allow both ADMIN and DATA_ENTRY
+  // @ts-ignore
+  const userRole = session?.user?.role;
+  if (userRole !== 'ADMIN' && userRole !== 'DATA_ENTRY') {
+      return { error: "Unauthorized" };
+  }
+  // @ts-ignore
+  const userId = session?.user?.id;
 
   const companyId = formData.get('companyId') as string;
   const name = formData.get('name') as string;
   const website = formData.get('website') as string;
   const categoryId = formData.get('categoryId') as string;
   
-  // ✅ EXTRACT SUB-CATEGORY (Important: The modal sends this!)
+  // ✅ EXTRACT SUB-CATEGORY
   const subCategoryId = formData.get('subCategoryId') as string;
 
   const description = formData.get('description') as string;
@@ -581,15 +591,14 @@ export async function upsertCompany(prevState: any, formData: FormData) {
   
   // ✅ HANDLE DOMAIN VERIFIED
   const domainVerifiedRaw = formData.get('domainVerified');
-  // If checked, set date to Now. If unchecked, set to null (unverify).
   const domainVerified = domainVerifiedRaw === 'on' ? new Date() : null;
   
-  // 1. Handle Keywords
+  // 1. Handle Keywords (Existing Logic)
   const keywords = keywordsInput
     ? keywordsInput.split(',').map((k) => k.trim().toLowerCase()).filter(Boolean)
     : [name.toLowerCase(), 'service']; 
 
-  // 2. Handle Images Logic
+  // 2. Handle Images Logic (Existing Logic)
   const logoFile = formData.get('logo') as File;
   const otherImageFiles = formData.getAll('otherImages') as File[]; 
   
@@ -609,20 +618,20 @@ export async function upsertCompany(prevState: any, formData: FormData) {
     let logoUrl = undefined;
     const newImageUrls: string[] = [];
 
-    // 3. Upload Logo
+    // 3. Upload Logo (Existing Logic)
     if (logoFile && logoFile.size > 0) {
       const arrayBuffer = await logoFile.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
       const uploadResult = await new Promise<any>((resolve, reject) => {
         cloudinary.uploader.upload_stream(
-          { folder: "company_logos", transformation: [{ width: 200, height: 200, crop: "fill" }] },
+          { folder: "company_logos", transformation: [{ width: 200, height: 200, crop: "fill", quality: "auto", fetch_format: "auto" }] },
           (error, result) => (error ? reject(error) : resolve(result))
         ).end(buffer);
       });
       logoUrl = uploadResult.secure_url;
     }
 
-    // 4. Upload Gallery Images
+    // 4. Upload Gallery Images (Existing Logic)
     if (otherImageFiles.length > 0) {
       const uploadPromises = otherImageFiles.map(async (file) => {
         if (file.size > 0) {
@@ -630,7 +639,7 @@ export async function upsertCompany(prevState: any, formData: FormData) {
           const buffer = Buffer.from(arrayBuffer);
           return new Promise<string>((resolve, reject) => {
             cloudinary.uploader.upload_stream(
-              { folder: "company_showcase" },
+              { folder: "company_showcase", transformation: [{ width: 1200, crop: "limit", quality: "auto", fetch_format: "auto" }] },
               (error, result) => (error ? reject(error) : resolve(result!.secure_url))
             ).end(buffer);
           });
@@ -649,7 +658,7 @@ export async function upsertCompany(prevState: any, formData: FormData) {
       name,
       websiteUrl: website,
       categoryId,
-      subCategoryId, // ✅ Added subCategoryId
+      subCategoryId, 
       briefIntroduction: description,
       city,
       country,
@@ -658,14 +667,60 @@ export async function upsertCompany(prevState: any, formData: FormData) {
       address,
       companyType,
       claimed,
-      domainVerified, // ✅ Added domainVerified (This was missing!)
+      domainVerified,
       keywords,
       otherImages: finalGalleryImages,
     };
 
-    // Only update logo if a new one was uploaded
     if (logoUrl) dataPayload.logoImage = logoUrl;
 
+    // ============================================================
+    // ✅ NEW INTERCEPTION LOGIC STARTS HERE
+    // ============================================================
+
+    // 7. PRE-CALCULATE SUB-CATEGORY FOR CREATION
+    // We do this here so it is saved correctly in the PendingChange payload too
+    if (!companyId && !dataPayload.subCategoryId) {
+         const category = await prisma.category.findUnique({
+            where: { id: categoryId },
+            include: { subCategories: true }
+         });
+         // Fallback to first subcategory if none provided
+         if (category && category.subCategories.length > 0) {
+             dataPayload.subCategoryId = category.subCategories[0].id;
+         } else {
+             return { error: "Category invalid or has no subcategories." };
+         }
+    }
+
+    // 8. ADD SLUG (For creation scenarios)
+    if (!companyId) {
+        dataPayload.slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    }
+
+    // ------------------------------------------------------------
+    // A. IF DATA ENTRY USER -> SAVE TO PENDING CHANGES
+    // ------------------------------------------------------------
+    if (userRole === 'DATA_ENTRY') {
+        await prisma.pendingChange.create({
+            data: {
+                model: "COMPANY",
+                action: companyId ? "UPDATE" : "CREATE",
+                targetId: companyId || null, // null if creating
+                data: dataPayload as any, // Save the full prepared JSON
+                requesterId: userId as string,
+                status: "PENDING"
+            }
+        });
+        
+        // Revalidate the data entry views
+        revalidatePath('/data-entry/companies');
+        return { success: true, message: "Request submitted for Admin Approval." };
+    }
+
+    // ------------------------------------------------------------
+    // B. IF ADMIN -> EXECUTE DIRECTLY (Existing Logic)
+    // ------------------------------------------------------------
     if (companyId) {
       // --- UPDATE ---
       await prisma.company.update({
@@ -674,25 +729,10 @@ export async function upsertCompany(prevState: any, formData: FormData) {
       });
     } else {
       // --- CREATE ---
-      // Logic: Use subCategoryId from form if verified, otherwise fallback to first in category
-      let finalSubCatId = subCategoryId;
-
-      if (!finalSubCatId) {
-          const category = await prisma.category.findUnique({
-            where: { id: categoryId },
-            include: { subCategories: true }
-          });
-          
-          if (!category || category.subCategories.length === 0) return { error: "Category invalid." };
-          finalSubCatId = category.subCategories[0].id;
-      }
-
+      // Note: We already calculated subCategoryId and slug above in step 7 & 8
+      // so we can just use dataPayload directly now.
       await prisma.company.create({
-        data: {
-          ...dataPayload,
-          slug: name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-          subCategoryId: finalSubCatId, 
-        }
+        data: dataPayload
       });
     }
 
@@ -1704,7 +1744,7 @@ async function uploadToCloudinary(file: File): Promise<string> {
 
   return new Promise((resolve, reject) => {
     cloudinary.uploader.upload_stream(
-      { folder: "business-updates" }, // Optional folder
+      { folder: "business-updates",transformation: [{ width: 1200, crop: "limit", quality: "auto", fetch_format: "auto" }] }, // Optional folder
       (error, result) => {
         if (error) return reject(error);
         resolve(result?.secure_url || "");
@@ -1933,6 +1973,7 @@ export async function verifyDomainToken(token: string) {
   return { success: true, companyName: company.name };
 }
 
+// --- CREATE CAMPAIGN ACTION ---
 export async function createCampaign(prevState: any, formData: FormData) {
   const session = await auth();
   if (!session?.user?.companyId) return { error: "Unauthorized" };
@@ -1947,10 +1988,15 @@ export async function createCampaign(prevState: any, formData: FormData) {
   const htmlContent = formData.get("htmlContent") as string;
   const recipientsRaw = formData.get("recipients") as string;
 
+  // ✅ 1. NEW: Extract Template Fields
+  const templateType = (formData.get("templateType") as "INVITE" | "PROMOTIONAL") || "INVITE";
+  const customBtnText = formData.get("customBtnText") as string;
+  const customBtnUrl = formData.get("customBtnUrl") as string;
+
   // Basic Validation (Drafts can be partial, but let's require basics)
   if (!name || !subject) return { error: "Name and Subject are required." };
 
-  // Handle Images (Same as before)
+  // Handle Images (Your Existing Logic Preserved)
   const logoFile = formData.get("logo") as File;
   const bannerFile = formData.get("banner") as File;
   let logoUrl = null;
@@ -1962,7 +2008,7 @@ export async function createCampaign(prevState: any, formData: FormData) {
             const arrayBuffer = await file.arrayBuffer();
             const buffer = Buffer.from(arrayBuffer);
             const res = await new Promise<any>((resolve, reject) => {
-                cloudinary.uploader.upload_stream({ folder }, (err, result) => err ? reject(err) : resolve(result)).end(buffer);
+                cloudinary.uploader.upload_stream({ folder,transformation: [{ width: 800, crop: "limit", quality: "auto", fetch_format: "auto" }] }, (err, result) => err ? reject(err) : resolve(result)).end(buffer);
             });
             return res.secure_url;
         }
@@ -1988,6 +2034,14 @@ export async function createCampaign(prevState: any, formData: FormData) {
   
   const finalLogo = logoUrl || company?.logoImage;
 
+  // ✅ 2. NEW: Determine Button Logic
+  const domain = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const profileLink = `${domain}/company/${company?.slug}`;
+  
+  // If promotional, use custom inputs. If invite, use defaults.
+  const finalBtnText = templateType === "PROMOTIONAL" ? customBtnText : "Rate Your Experience";
+  const finalBtnUrl = templateType === "PROMOTIONAL" ? customBtnUrl : profileLink;
+
   // --- LOGIC SPLIT ---
   let sentCount = 0;
   let status = "DRAFT";
@@ -2002,19 +2056,18 @@ export async function createCampaign(prevState: any, formData: FormData) {
           return { error: limitCheck.error }; // Stop execution here
       }
       
-      const domain = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-      const reviewLink = `${domain}/company/${company?.slug}`;
-
       for (const recipient of recipientList) {
+        // ✅ 3. UPDATE: Pass new button args to your email helper
         await sendProfessionalCampaign(
            recipient,
            company?.name || "Business",
            senderEmail,
            subject,
            htmlContent,
-           reviewLink,
+           finalBtnUrl, // Use the calculated URL
            finalLogo,
-           bannerUrl
+           bannerUrl,
+           finalBtnText // Pass the button text (Ensure your helper accepts this optional arg!)
         );
         sentCount++;
       }
@@ -2025,6 +2078,7 @@ export async function createCampaign(prevState: any, formData: FormData) {
   }
 
   // Save to DB (Status will be DRAFT or SENT)
+  // ✅ 4. UPDATE: Save new fields
   await prisma.campaign.create({
     data: {
       companyId,
@@ -2037,7 +2091,11 @@ export async function createCampaign(prevState: any, formData: FormData) {
       recipients: recipientList,
       sentCount,
       status: status as any, // Cast to enum
-      sentAt
+      sentAt,
+      // New Fields
+      templateType,
+      buttonText: templateType === "PROMOTIONAL" ? customBtnText : null,
+      buttonUrl: templateType === "PROMOTIONAL" ? customBtnUrl : null
     }
   });
 
@@ -2056,6 +2114,11 @@ export async function updateDraft(prevState: any, formData: FormData) {
   const htmlContent = formData.get("htmlContent") as string;
   const recipientsRaw = formData.get("recipients") as string;
   
+  // ✅ 5. NEW: Extract Template Fields for Update
+  const templateType = (formData.get("templateType") as "INVITE" | "PROMOTIONAL") || "INVITE";
+  const customBtnText = formData.get("customBtnText") as string;
+  const customBtnUrl = formData.get("customBtnUrl") as string;
+
   // Handle Images (Optional Update)
   const logoFile = formData.get("logo") as File;
   const bannerFile = formData.get("banner") as File;
@@ -2097,6 +2160,7 @@ export async function updateDraft(prevState: any, formData: FormData) {
       .filter(email => email.includes("@"));
 
     // 4. Update Database
+    // ✅ 6. UPDATE: Save new fields
     await prisma.campaign.update({
       where: { id: campaignId },
       data: {
@@ -2106,7 +2170,11 @@ export async function updateDraft(prevState: any, formData: FormData) {
         recipients: recipientList,
         logoUrl,
         bannerUrl,
-        updatedAt: new Date()
+        updatedAt: new Date(),
+        // New Fields
+        templateType,
+        buttonText: templateType === "PROMOTIONAL" ? customBtnText : null,
+        buttonUrl: templateType === "PROMOTIONAL" ? customBtnUrl : null
       }
     });
 
@@ -2118,7 +2186,7 @@ export async function updateDraft(prevState: any, formData: FormData) {
   }
 }
 
-// 2. NEW ACTION: Send a Draft
+// 2. SEND DRAFT ACTION (Updated Logic)
 export async function sendDraft(campaignId: string) {
     const session = await auth();
     if (!session?.user?.companyId) return { error: "Unauthorized" };
@@ -2140,21 +2208,32 @@ export async function sendDraft(campaignId: string) {
         select: { name: true, slug: true }
     });
 
+    // ✅ 7. NEW: Recalculate Button Logic based on Saved Data
     const domain = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const reviewLink = `${domain}/company/${company?.slug}`;
+    const profileLink = `${domain}/company/${company?.slug}`;
+
+    const finalBtnText = campaign.templateType === "PROMOTIONAL" 
+       ? campaign.buttonText || "View Details" 
+       : "Rate Your Experience";
+
+    const finalBtnUrl = campaign.templateType === "PROMOTIONAL" 
+       ? campaign.buttonUrl || profileLink
+       : profileLink;
 
     // Send the emails
     let count = 0;
     for (const recipient of campaign.recipients) {
+        // ✅ 8. UPDATE: Pass correct button args
         await sendProfessionalCampaign(
             recipient,
             company?.name || "Business",
             campaign.senderEmail,
             campaign.subject,
             campaign.content,
-            reviewLink,
+            finalBtnUrl, // Recalculated URL
             campaign.logoUrl,
-            campaign.bannerUrl
+            campaign.bannerUrl,
+            finalBtnText // Recalculated Text
         );
         count++;
     }
@@ -2175,7 +2254,7 @@ export async function sendDraft(campaignId: string) {
     return { success: true };
 }
 
-// --- DELETE CAMPAIGN ---
+// --- DELETE CAMPAIGN (Unchanged) ---
 export async function deleteCampaign(campaignId: string) {
   const session = await auth();
   if (!session?.user?.companyId) return { error: "Unauthorized" };

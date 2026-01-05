@@ -1,10 +1,20 @@
 import { prisma } from "@/lib/prisma";
 import { CategoryManager } from "@/components/admin_components/category-manager";
+import { auth } from "@/auth";
+import { redirect } from "next/navigation";
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: "Manage Categories" };
 
 export default async function AdminCategoriesPage() {
+
+  const session = await auth();
+
+  // 🔒 Security Check
+  if (session?.user?.role !== "ADMIN") {
+    // If they are DATA_ENTRY, kick them out
+    return redirect("/admin/companies"); 
+  }
   
   // Fetch categories with their subcategories included
   const categories = await prisma.category.findMany({

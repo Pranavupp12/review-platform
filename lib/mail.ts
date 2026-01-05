@@ -182,17 +182,16 @@ export const sendReviewInvite = async (
   }
 };
 
-// lib/mail.ts
-
 export const sendProfessionalCampaign = async (
   toEmail: string, 
   businessName: string, 
   replyTo: string, 
   subject: string,
-  htmlBody: string, // The rich text from editor
-  reviewLink: string,
+  htmlBody: string, 
+  buttonUrl: string,      // 👈 Renamed from 'reviewLink' to 'buttonUrl'
   logoUrl?: string | null,
-  bannerUrl?: string | null
+  bannerUrl?: string | null,
+  buttonText: string = "Write a Review" // 👈 Added this new argument
 ) => {
   
   // Construct HTML
@@ -216,8 +215,8 @@ export const sendProfessionalCampaign = async (
       </div>
 
       <div style="text-align: center; padding: 0 20px 30px;">
-         <a href="${reviewLink}" style="background-color: #0ABED6; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; display: inline-block;">
-            Write a Review
+         <a href="${buttonUrl}" style="background-color: #0ABED6; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; display: inline-block;">
+            ${buttonText}
          </a>
       </div>
 

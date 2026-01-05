@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { CompanyAnalyticsView } from "@/components/admin_components/admin-analytics/company-analytics-view";
+import { getSearchAnalytics } from "@/lib/get-advance-analytics"; // ✅ Reuse your existing helper
 import Link from "next/link";
 import { ChevronRight, BarChart3 } from "lucide-react";
 
@@ -13,30 +14,36 @@ interface PageProps {
 export default async function CompanyAnalyticsPage({ params }: PageProps) {
   const { companyId } = await params;
 
-  // 1. Fetch Company & Reviews
-  const company = await prisma.company.findUnique({
-    where: { id: companyId },
-    include: {
-      category: true,
-      reviews: {
-        orderBy: { createdAt: 'desc' },
-        // Fetch fields needed for analytics + USER DETAILS
-        select: { 
-            id: true,         // Explicitly select ID for unique keys
+  // ✅ FETCH EVERYTHING IN PARALLEL (Server-Side)
+  // This avoids the "loading spinner" effect on the client
+  const [company, searchStats] = await Promise.all([
+    // 1. Fetch Company & Reviews
+    prisma.company.findUnique({
+      where: { id: companyId },
+      include: {
+        category: true,
+        reviews: {
+          orderBy: { createdAt: 'desc' },
+          select: { 
+            id: true,
             starRating: true, 
             createdAt: true, 
             keywords: true,
             comment: true,
-            user: {           // ✅ Added this section
+            user: {
               select: {
                 name: true,
                 image: true
               }
             }
-        } 
+          } 
+        }
       }
-    }
-  });
+    }),
+
+    // 2. Fetch Search Analytics (using your existing logic)
+    getSearchAnalytics(companyId)
+  ]);
 
   if (!company) return notFound();
 
@@ -71,6 +78,7 @@ export default async function CompanyAnalyticsPage({ params }: PageProps) {
       <CompanyAnalyticsView 
          company={company}
          reviews={company.reviews}
+         searchStats={searchStats} // ✅ Pass the data here
          isPro={true}
       />
     </div>

@@ -9,11 +9,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import {
   TrendingUp, MessageSquare, AlertTriangle, ThumbsUp, ThumbsDown,
   Lightbulb, Sparkles, BookOpen, Lock,
-  Zap, Eye, MousePointerClick, DollarSign, Search, Info, MapPin
+  Zap, Eye, MousePointerClick, DollarSign, Search, Info, MapPin,
+  Scale,
 } from "lucide-react";
 import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 import { generateCompanyInsight } from "@/lib/search-action";
-import { getSearchAnalytics } from "@/lib/get-advance-analytics";
 import { AnalyticsPaywall } from "@/components/business_dashboard/analytics-paywall";
 import { MetricCard } from "@/components/admin_components/admin-analytics/metric-card";
 import {
@@ -23,14 +23,17 @@ import {
   Tooltip as UiTooltip
 } from "@/components/ui/tooltip";
 import { ReviewCard } from "@/components/shared/review-card";
+import  {ComparisonTab}  from "@/components/admin_components/admin-analytics/comparison-tab"; 
 
 interface CompanyAnalyticsViewProps {
   company: any;
   reviews: any[];
   isPro: boolean;
+  searchStats: any;
 }
 
-// --- HELPER: Info Tooltip ---
+// ... (Keep existing Helper Components: InfoTooltip, HighlightedText, CustomChartTooltip) ...
+// --- HELPER: InfoTooltip ---
 const InfoTooltip = ({ text }: { text: string }) => (
   <TooltipProvider delayDuration={300}>
     <UiTooltip>
@@ -45,14 +48,12 @@ const InfoTooltip = ({ text }: { text: string }) => (
 );
 
 // --- HELPER: Keyword Highlighter ---
-const HighlightedText = ({ text, keywords, type }: { text: string, keywords: string[], type: 'positive' | 'negative' }) => {
+const HighlightedText = ({ text, keywords, type }: { text: string, keywords: string[], type: 'positive' | 'negative' | 'neutral' }) => {
   if (!keywords || keywords.length === 0 || !text) return <>{text}</>;
 
   const snippetsToHighlight = keywords
     .map(k => {
       const parts = k.split(':');
-      // Format: "topic:sentiment:snippet"
-      // If snippet exists (index 2), use it. Otherwise use topic (index 0).
       if (parts.length >= 3) {
         return parts.slice(2).join(':').trim();
       }
@@ -62,15 +63,15 @@ const HighlightedText = ({ text, keywords, type }: { text: string, keywords: str
 
   if (snippetsToHighlight.length === 0) return <>{text}</>;
 
-  // Escape special chars for Regex
   const escapedSnippets = snippetsToHighlight.map(s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
   const regex = new RegExp(`(${escapedSnippets.join('|')})`, 'gi');
 
   const parts = text.split(regex);
 
-  const highlightClass = type === 'positive'
-    ? "bg-green-100 text-green-800 px-1 rounded font-medium"
-    : "bg-red-100 text-red-800 px-1 rounded font-medium";
+  const highlightClass = 
+    type === 'positive' ? "bg-green-100 text-green-800 px-1 rounded font-medium" :
+    type === 'negative' ? "bg-red-100 text-red-800 px-1 rounded font-medium" :
+    "bg-amber-100 text-amber-900 px-1 rounded font-medium";
 
   return (
     <span>
@@ -117,7 +118,7 @@ const CustomChartTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
-export function CompanyAnalyticsView({ company, reviews, isPro }: CompanyAnalyticsViewProps) {
+export function CompanyAnalyticsView({ company, reviews, isPro, searchStats }: CompanyAnalyticsViewProps) {
 
   // --- STATE ---
   const [aiData, setAiData] = useState<{
@@ -128,7 +129,6 @@ export function CompanyAnalyticsView({ company, reviews, isPro }: CompanyAnalyti
     sentimentActions: string[];
   } | null>(null);
 
-  const [searchStats, setSearchStats] = useState<any>(null);
   const [aiLoading, setAiLoading] = useState(true);
 
   // --- CALCULATIONS ---
@@ -138,39 +138,33 @@ export function CompanyAnalyticsView({ company, reviews, isPro }: CompanyAnalyti
   const nss = totalReviews > 0 ? Math.round(((positiveReviews - negativeReviews) / totalReviews) * 100) : 0;
   const currentScore = company.rating || 0;
 
-  // --- EFFECT: Fetch Data ---
+  // --- EFFECT: Generate AI Insights Only ---
   useEffect(() => {
     if (!isPro) return;
 
-    const fetchData = async () => {
-      let sStats = null;
-      try {
-        sStats = await getSearchAnalytics(company.id);
-        setSearchStats(sStats);
-      } catch (e) { console.error("Search stats failed", e); }
-
+    const generateAi = async () => {
       const metricsData = {
         trustScore: currentScore,
         nss: nss,
         totalReviews: totalReviews,
-        searchImpressions: sStats?.totals?.impressions || 0,
-        ctr: Number(sStats?.totals?.ctr) || 0,
-        adValue: sStats?.totals?.adSpend || "0.00"
+        searchImpressions: searchStats?.totals?.impressions || 0,
+        ctr: Number(searchStats?.totals?.ctr) || 0,
+        adValue: searchStats?.totals?.adSpend || "0.00"
       };
 
       if (reviews.length > 0) {
         const aiResult = await generateCompanyInsight(
           reviews,
           metricsData,
-          sStats?.topQueries || []
+          searchStats?.topQueries || []
         );
         if (aiResult) setAiData(aiResult);
       }
       setAiLoading(false);
     };
 
-    fetchData();
-  }, [reviews, isPro, company.id]);
+    generateAi();
+  }, [reviews, isPro, company.id, searchStats]);
 
   // --- CHART DATA PREP ---
   const trendData = [];
@@ -197,25 +191,20 @@ export function CompanyAnalyticsView({ company, reviews, isPro }: CompanyAnalyti
       let topic = entry;
       let sentiment = 'neutral';
 
-      // 1. Parse "topic:sentiment:snippet"
       if (entry.includes(':')) {
         const parts = entry.split(':');
         topic = parts[0];
         sentiment = parts[1];
-        // We ignore snippet (parts[2]) for the graph aggregation
       } else {
-        // Fallback for old data
         topic = entry;
         if (r.starRating >= 4) sentiment = 'positive';
         else if (r.starRating <= 2) sentiment = 'negative';
       }
 
-      // 2. Init Map
       if (!keywordMap[topic]) {
         keywordMap[topic] = { total: 0, positive: 0, negative: 0, neutral: 0, sumRating: 0 };
       }
 
-      // 3. Update Counts
       keywordMap[topic].total++;
       keywordMap[topic].sumRating += r.starRating;
 
@@ -233,9 +222,9 @@ export function CompanyAnalyticsView({ company, reviews, isPro }: CompanyAnalyti
     return {
       topic,
       total: data.total,
-      posCount: data.positive, // Used for tooltip
-      neuCount: data.neutral,  // Used for tooltip
-      negCount: data.negative, // Used for tooltip
+      posCount: data.positive,
+      neuCount: data.neutral,
+      negCount: data.negative,
       posPct,
       negPct,
       neuPct,
@@ -246,9 +235,7 @@ export function CompanyAnalyticsView({ company, reviews, isPro }: CompanyAnalyti
   const topKeywords = [...keywordAnalysis].sort((a, b) => b.total - a.total).slice(0, 6);
   const riskAlert = keywordAnalysis.filter(k => k.total >= 1 && k.negPct >= 20).sort((a, b) => b.negPct - a.negPct)[0];
 
-  // --- FILTERING: Backward Compatible Logic ---
-
-  // Positive: Matches ":positive" tags OR (Legacy text + High Rating)
+  // --- FILTERING ---
   const latestPositive = [...reviews]
     .filter(r => {
       const keywords = r.keywords || [];
@@ -259,7 +246,6 @@ export function CompanyAnalyticsView({ company, reviews, isPro }: CompanyAnalyti
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, 3);
 
-  // Negative: Matches ":negative" tags OR (Legacy text + Low Rating)
   const latestNegative = [...reviews]
     .filter(r => {
       const keywords = r.keywords || [];
@@ -270,11 +256,22 @@ export function CompanyAnalyticsView({ company, reviews, isPro }: CompanyAnalyti
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, 3);
 
+  const latestNeutral = [...reviews]
+    .filter(r => {
+      const keywords = r.keywords || [];
+      const hasSmartNeutral = keywords.some((k: string) => k.toLowerCase().includes(':neutral'));
+      const hasLegacyNeutral = r.starRating === 3 && keywords.some((k: string) => !k.includes(':'));
+      return hasSmartNeutral || hasLegacyNeutral;
+    })
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 3);
+
   return (
     <div className="space-y-8">
 
       {/* --- SECTION 1: KPI CARDS --- */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* ... (Existing KPI Cards) ... */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium flex items-center">TrustScore <InfoTooltip text="Score based on review ratings and recency." /></CardTitle>
@@ -350,9 +347,9 @@ export function CompanyAnalyticsView({ company, reviews, isPro }: CompanyAnalyti
                 <MetricCard title="Click-Through Rate" value={`${searchStats.totals.ctr}%`} helperText="Percentage of clicks per impression." icon={<Zap className="h-4 w-4 text-yellow-500" />} />
                 <MetricCard title="Est. Ad Value" value={`$${searchStats.totals.adSpend}`} helperText="Monetary value of organic traffic." icon={<DollarSign className="h-4 w-4 text-purple-500" />} />
               </div>
-
-              {/* Search Query Table */}
-              <Card>
+              
+              {/* Search Query Table (Kept as is) */}
+               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-base">
                     <Search className="h-4 w-4 text-blue-500" />
@@ -420,7 +417,7 @@ export function CompanyAnalyticsView({ company, reviews, isPro }: CompanyAnalyti
             </div>
           )}
 
-          {/* AI Insights & Executive Summary */}
+          {/* AI Insights Summary Block */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 bg-gradient-to-r from-[#000032] to-[#000050] rounded-xl p-6 text-white shadow-lg relative overflow-hidden min-h-[180px]">
               <div className="absolute top-0 right-0 p-6 opacity-10"><Sparkles className="h-32 w-32" /></div>
@@ -444,16 +441,19 @@ export function CompanyAnalyticsView({ company, reviews, isPro }: CompanyAnalyti
             <TabsList>
               <TabsTrigger value="performance">Performance Trends</TabsTrigger>
               <TabsTrigger value="sentiment">Sentiment Analysis</TabsTrigger>
+              <TabsTrigger value="comparison" className="flex items-center gap-2">
+                Comparison
+              </TabsTrigger>
             </TabsList>
 
+            {/* Tab 1: Performance */}
             <TabsContent value="performance" className="space-y-4">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <Card><CardHeader><CardTitle>TrustScore History</CardTitle></CardHeader><CardContent className="h-[300px]"><ResponsiveContainer width="100%" height="100%"><LineChart data={trendData}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="month" /><YAxis domain={[0, 5]} /><Tooltip /><Line type="monotone" dataKey="score" stroke="#0ABED6" strokeWidth={3} /></LineChart></ResponsiveContainer></CardContent></Card>
                 <Card><CardHeader><CardTitle>Review Volume</CardTitle></CardHeader><CardContent className="h-[300px]"><ResponsiveContainer width="100%" height="100%"><BarChart data={trendData}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="month" /><YAxis /><Tooltip /><Bar dataKey="reviews" fill="#000032" radius={[4, 4, 0, 0]} /></BarChart></ResponsiveContainer></CardContent></Card>
               </div>
-
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 bg-purple-50 p-6 rounded-xl border border-purple-100 relative overflow-hidden flex flex-col justify-center">
+                 <div className="lg:col-span-2 bg-purple-50 p-6 rounded-xl border border-purple-100 relative overflow-hidden flex flex-col justify-center">
                   <div className="flex items-center gap-2 mb-3 text-purple-800 font-bold z-10">
                     <Sparkles className="h-5 w-5" /> AI Trend Insight
                   </div>
@@ -472,99 +472,67 @@ export function CompanyAnalyticsView({ company, reviews, isPro }: CompanyAnalyti
               </div>
             </TabsContent>
 
+            {/* Tab 2: Sentiment */}
             <TabsContent value="sentiment" className="space-y-6">
 
-              {/* Stacked Sentiment Graph */}
+              {/* 1. Stacked Sentiment Graph (Now at Top) */}
               <Card className="col-span-1 lg:col-span-2 shadow-sm border-gray-200">
                 <CardHeader>
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div>
-                      <CardTitle className="flex items-center gap-2">
-                        Topic Sentiment Distribution
-                        <InfoTooltip text="Sentiment is analyzed per topic based on text mentions, independent of the star rating. This reveals negative feedback hidden within positive reviews." />
-                      </CardTitle>
-                      <CardDescription>
-                        See exactly how customers feel about key aspects of your business.
-                      </CardDescription>
-                    </div>
-                  </div>
+                  <CardTitle className="flex items-center gap-2">Topic Sentiment Distribution</CardTitle>
+                  <CardDescription>See exactly how customers feel about key aspects of your business.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex flex-col gap-6">
-                    <div className="flex flex-wrap gap-2 p-4 bg-gray-50/50 rounded-xl border border-gray-100 items-center">
-                      <span className="text-xs font-bold text-gray-500 mr-2 uppercase tracking-wide">
-                        Most Talked About:
-                      </span>
-                      {topKeywords.length > 0 ? topKeywords.map((k, i) => (
-                        <div key={i} className="flex items-center gap-2 bg-white px-2.5 py-1 rounded-md border border-gray-200 shadow-sm">
-                          <span className="font-medium text-xs capitalize text-gray-700">{k.topic}</span>
-                          <span className="text-[10px] text-gray-400">({k.total})</span>
-                        </div>
-                      )) : <span className="text-sm text-gray-400 italic">No topics found yet.</span>}
-                    </div>
-
-                    <div className="h-[400px] w-full mt-2">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart
-                          data={topKeywords}
-                          margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                          barCategoryGap="30%"
-                        >
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-                          <XAxis
-                            dataKey="topic"
-                            tick={{ fontSize: 12, fill: '#6b7280', textTransform: 'capitalize', fontWeight: 500 } as any}
-                            axisLine={false}
-                            tickLine={false}
-                            dy={10}
-                          />
-                          <YAxis
-                            unit="%"
-                            axisLine={false}
-                            tickLine={false}
-                            tick={{ fontSize: 11, fill: '#9ca3af' }}
-                          />
-
-                          <Tooltip content={<CustomChartTooltip />} cursor={{ fill: '#f9fafb' }} />
-                          <Legend wrapperStyle={{ paddingTop: '20px', fontSize: '12px' }} iconType="circle" />
-
-                          <Bar dataKey="negPct" name="Negative" stackId="a" fill="#ef4444" radius={[0, 0, 4, 4]} maxBarSize={60} />
-                          <Bar dataKey="neuPct" name="Neutral" stackId="a" fill="#f59e0b" maxBarSize={60} />
-                          <Bar dataKey="posPct" name="Positive" stackId="a" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={60} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
+                  <div className="h-[400px] w-full mt-2">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={topKeywords} margin={{ top: 20, right: 30, left: 20, bottom: 5 }} barCategoryGap="30%">
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                        <XAxis dataKey="topic" tick={{ fontSize: 12, fill: '#6b7280', textTransform: 'capitalize' } as any} axisLine={false} tickLine={false} dy={10} />
+                        <YAxis unit="%" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#9ca3af' }} />
+                        <Tooltip content={<CustomChartTooltip />} cursor={{ fill: '#f9fafb' }} />
+                        <Legend wrapperStyle={{ paddingTop: '20px', fontSize: '12px' }} iconType="circle" />
+                        <Bar dataKey="negPct" name="Negative" stackId="a" fill="#ef4444" radius={[0, 0, 4, 4]} maxBarSize={60} />
+                        <Bar dataKey="neuPct" name="Neutral" stackId="a" fill="#f59e0b" maxBarSize={60} />
+                        <Bar dataKey="posPct" name="Positive" stackId="a" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={60} />
+                      </BarChart>
+                    </ResponsiveContainer>
                   </div>
                 </CardContent>
               </Card>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-purple-50 p-6 rounded-xl border border-purple-100 relative overflow-hidden">
-                  <div className="flex items-center gap-2 mb-3 text-purple-800 font-bold z-10">
-                    <Sparkles className="h-5 w-5" /> AI Sentiment Analysis
+              {/* 2. AI Sentiment Analysis Section (Moved Down & Updated Icon) */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 bg-indigo-50 p-6 rounded-xl border border-indigo-100 relative overflow-hidden flex flex-col justify-center min-h-[160px]">
+                  <div className="flex items-center gap-2 mb-3 text-indigo-900 font-bold z-10">
+                    {/* ✅ Icon Changed to Sparkles */}
+                    <Sparkles className="h-5 w-5 text-indigo-600 fill-indigo-200" /> AI Sentiment Analysis
                   </div>
-                  <p className="text-sm text-purple-900/80 leading-relaxed font-medium z-10">
-                    {aiLoading ? "Reading reviews..." : (aiData?.sentimentAnalysis || "Insufficient review data.")}
+                  <p className="text-sm text-indigo-900/80 leading-relaxed font-medium z-10">
+                    {aiLoading ? "Analyzing sentiment..." : (aiData?.sentimentAnalysis || "Insufficient data to analyze sentiment depth.")}
                   </p>
+                  {/* Background Icon */}
+                  <div className="absolute top-[-20px] right-[-20px] opacity-5">
+                    <Sparkles className="h-32 w-32 text-indigo-600" />
+                  </div>
                 </div>
 
-                <div className="bg-orange-50 p-6 rounded-xl border border-orange-100 relative overflow-hidden">
-                  <div className="flex items-center gap-2 mb-3 text-orange-800 font-bold z-10">
-                    <Zap className="h-5 w-5" /> Recommended Fixes
+                <div className="bg-white p-6 rounded-xl border border-gray-200 h-full flex flex-col justify-center min-h-[160px]">
+                  <div className="flex items-center gap-2 mb-3 text-gray-900 font-bold">
+                    <Lightbulb className="h-5 w-5 text-yellow-500" /> Recommended Actions
                   </div>
-                  <ul className="space-y-2 z-10 relative">
-                    {(aiData?.sentimentActions || ["Analyzing complaints..."]).map((action, i) => (
-                      <li key={i} className="text-sm text-orange-900/80 flex gap-2 items-start">
-                        <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-orange-400 shrink-0" />
-                        {action}
+                  <ul className="space-y-2">
+                    {(aiData?.sentimentActions || ["Gather more reviews to unlock actions."]).slice(0, 3).map((action, i) => (
+                      <li key={i} className="text-xs text-gray-600 flex gap-2 items-start">
+                        <span className="text-indigo-500 mt-0.5 text-[10px] shrink-0">●</span>
+                        <span>{action}</span>
                       </li>
                     ))}
                   </ul>
                 </div>
               </div>
 
+              {/* 3. Review Grids (Positive / Neutral / Negative) */}
               <div className="space-y-8 mt-6">
-
+                
                 {/* Positive Grid */}
                 <div>
                   <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-4">
@@ -602,6 +570,47 @@ export function CompanyAnalyticsView({ company, reviews, isPro }: CompanyAnalyti
                   ) : (
                     <div className="p-8 bg-gray-50 rounded-xl border border-dashed border-gray-200 text-center text-gray-400">
                       No positive reviews with specific keywords found recently.
+                    </div>
+                  )}
+                </div>
+
+                {/* Neutral Grid */}
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-4">
+                    <Scale className="h-5 w-5 text-amber-500" />
+                    Neutral / Balanced Feedback
+                  </h3>
+                  {latestNeutral.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {latestNeutral.map((r: any, i: number) => (
+                        <div key={`${r.id}-${i}`} className="h-full">
+                          <ReviewCard
+                            userName={r.user?.name || "Anonymous"}
+                            userInitials={r.user?.name?.[0] || "A"}
+                            userAvatarUrl={r.user?.image}
+                            rating={r.starRating}
+                            className="w-full h-full max-w-none shadow-sm hover:shadow-md transition-shadow"
+                            textClassName="line-clamp-6"
+                            reviewText={<HighlightedText
+                              text={r.comment || r.text || r.content}
+                              keywords={r.keywords?.filter((k: string) =>
+                                k.toLowerCase().includes(':neutral') || (!k.includes(':') && r.starRating === 3)
+                              )}
+                              type="neutral"
+                            /> as any}
+                            companyName={company.name}
+                            companyLogoUrl={company.logoImage}
+                            companyDomain={company.websiteUrl}
+                            companySlug={company.slug}
+                            createdAt={r.createdAt}
+                            dateOfExperience={r.dateOfExperience || r.createdAt}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-8 bg-gray-50 rounded-xl border border-dashed border-gray-200 text-center text-gray-400">
+                      No neutral or balanced feedback found recently.
                     </div>
                   )}
                 </div>
@@ -651,10 +660,17 @@ export function CompanyAnalyticsView({ company, reviews, isPro }: CompanyAnalyti
                     </div>
                   )}
                 </div>
-
               </div>
-
             </TabsContent>
+
+            {/* Comparison Tab */}
+            <TabsContent value="comparison" className="space-y-6">
+              <ComparisonTab 
+                companyId={company.id} 
+                companyName={company.name} 
+              />
+            </TabsContent>
+
           </Tabs>
         </div>
       )}

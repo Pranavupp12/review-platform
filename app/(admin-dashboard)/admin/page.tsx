@@ -22,10 +22,20 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { auth } from '@/auth';
+import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminDashboardPage() {
+
+    const session = await auth();
+
+  // 🔒 Security Check
+  if (session?.user?.role !== "ADMIN") {
+    // If they are DATA_ENTRY, kick them out
+    return redirect("/admin/companies"); 
+  }
   
   // 1. Calculate Date for 30-day chart history
   const thirtyDaysAgo = new Date();

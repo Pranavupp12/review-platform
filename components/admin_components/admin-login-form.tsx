@@ -17,7 +17,7 @@ function LoginButton() {
       className="w-full bg-slate-900 hover:bg-slate-800 h-11 text-base font-semibold" 
       disabled={pending}
     >
-      {pending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Access Dashboard'}
+      {pending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Sign In'}
     </Button>
   );
 }
@@ -26,7 +26,9 @@ export function AdminLoginForm() {
   const [errorMessage, formAction] = useActionState(authenticate, undefined);
   const searchParams = useSearchParams();
   
-  // Ensure admin login always redirects to /admin (or the callback)
+  // Default to /admin. 
+  // NOTE: Your Admin Layout will automatically redirect Data Entry staff 
+  // to /data-entry if they land on /admin.
   const callbackUrl = searchParams.get('callbackUrl') || '/admin';
 
   return (
@@ -35,23 +37,26 @@ export function AdminLoginForm() {
       <div className="text-center space-y-2 mb-8">
         <div className="flex justify-center mb-4">
            <div className="h-12 w-12 bg-slate-100 rounded-full flex items-center justify-center">
+              {/* Shield icon works for both security levels */}
               <ShieldCheck className="h-6 w-6 text-slate-900" />
            </div>
         </div>
-        <h1 className="text-2xl font-bold text-slate-900">Admin Portal</h1>
-        <p className="text-sm text-slate-500">Please verify your identity to continue.</p>
+        {/* ✅ UPDATED: Generic Title */}
+        <h1 className="text-2xl font-bold text-slate-900">Staff Portal</h1>
+        <p className="text-sm text-slate-500">Enter your credentials to access the dashboard.</p>
       </div>
 
       <form action={formAction} className="space-y-5">
         <input type="hidden" name="redirectTo" value={callbackUrl} />
         
         <div className="space-y-2">
-          <Label htmlFor="email" className="text-slate-700">Admin Email</Label>
+          {/* ✅ UPDATED: Generic Label */}
+          <Label htmlFor="email" className="text-slate-700">Work Email</Label>
           <Input 
             id="email" 
             name="email" 
             type="email" 
-            placeholder="admin@help.com" 
+            placeholder="name@company.com" 
             required 
             className="h-11 border-slate-300 focus-visible:ring-slate-900"
           />
@@ -81,7 +86,7 @@ export function AdminLoginForm() {
 
       <div className="mt-6 text-center">
         <p className="text-xs text-slate-400">
-           Restricted System. IP Address Logged.
+           Restricted System. Authorized Access Only.
         </p>
       </div>
     </div>

@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import { getCategoryCompanies } from '@/lib/data';
 import { CompanyListCard } from '@/components/categories_components/company-list-card';
-import { LayoutGrid, Info } from 'lucide-react'; // ✅ Added Info icon
+import { LayoutGrid, Info } from 'lucide-react';
 import { FilterSheet } from '@/components/categories_components/filtersheet';
 import { RatingPopover } from '@/components/categories_components/rating-popover';
 import { CategorySort } from '@/components/categories_components/category-sort';
@@ -13,7 +13,8 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip"; // ✅ Added Tooltip components
+} from "@/components/ui/tooltip"; 
+import PageImpressionTracker from '@/components/categories_components/page-impression-tracker';
 
 export const dynamic = 'force-dynamic';
 
@@ -56,6 +57,11 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
 
   const { name: categoryName, subCategories, companies, featuredCompanies, pagination } = data;
 
+  const allCompanyIds = [
+    ...(featuredCompanies || []).map(c => c.id),
+    ...(companies || []).map(c => c.id)
+  ];
+
   const breadcrumbItems = [
     { label: "Categories", href: "/categories" },
     { label: categoryName, href: `/categories/${data.slug}`, current: true },
@@ -63,6 +69,13 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
 
   return (
     <div className="min-h-screen bg-white pb-20">
+
+      <PageImpressionTracker 
+        companyIds={allCompanyIds}
+        query={userQuery || categoryName} // Track using search query OR category name
+        location={locationFilter}
+        userRegion={region}
+      />
       
       {/* Header & Breadcrumbs */}
       <div className="bg-gray-50 border-b border-black/10 text-black py-8 md:py-10">

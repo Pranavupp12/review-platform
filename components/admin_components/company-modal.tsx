@@ -32,7 +32,13 @@ import { useGeoLocation, GeoItem } from "@/lib/hooks/use-geo-location";
 interface SubCategoryOption { id: string; name: string; }
 interface CategoryOption { id: string; name: string; subCategories: SubCategoryOption[]; }
 interface GalleryItem { id: string; url: string; file?: File; isExisting: boolean; }
-interface CompanyModalProps { categories: CategoryOption[]; company?: any; }
+
+// ✅ 1. ADDED userRole to Interface
+interface CompanyModalProps { 
+  categories: CategoryOption[]; 
+  company?: any; 
+  userRole: string; 
+}
 
 function SubmitButton({ isEdit }: { isEdit: boolean }) {
   const { pending } = useFormStatus();
@@ -43,7 +49,8 @@ function SubmitButton({ isEdit }: { isEdit: boolean }) {
   );
 }
 
-export function CompanyModal({ categories, company }: CompanyModalProps) {
+// ✅ 2. ADDED userRole to Props Destructuring
+export function CompanyModal({ categories, company, userRole }: CompanyModalProps) {
   const [open, setOpen] = useState(false);
   const [state, formAction] = useActionState(upsertCompany, null);
   const isEdit = !!company;
@@ -120,7 +127,6 @@ export function CompanyModal({ categories, company }: CompanyModalProps) {
                 setSelectedStateId(sId);
                 
                 if (matchedCountry.isoCode && matchedState.adminCode) {
-                    // ✅ PASS STATE NAME HERE (matchedState.name)
                     const cities = await fetchCities(matchedCountry.isoCode, matchedState.adminCode, matchedState.name);
                     setCitiesList(cities);
                 }
@@ -151,7 +157,6 @@ export function CompanyModal({ categories, company }: CompanyModalProps) {
     setStatesList(sList);
   };
 
-  // ✅ UPDATED: Handle State Change (Uses Codes for City Fetch)
   const handleStateChange = async (valId: string) => {
     setSelectedStateId(valId);
     
@@ -164,7 +169,6 @@ export function CompanyModal({ categories, company }: CompanyModalProps) {
     setCitiesList([]);
 
     if (cObj?.isoCode && sObj?.adminCode) {
-      // ✅ PASS STATE NAME HERE (sObj.name)
       const cList = await fetchCities(cObj.isoCode, sObj.adminCode, sObj.name);
       setCitiesList(cList);
     }
@@ -188,8 +192,6 @@ export function CompanyModal({ categories, company }: CompanyModalProps) {
     return cat ? cat.subCategories : [];
   }, [selectedCategoryId, categories]);
 
-
-  // Standard Handlers
   const handleCategoryChange = (val: string) => {
     setSelectedCategoryId(val);
     setSelectedSubCategoryId("");
@@ -388,13 +390,10 @@ export function CompanyModal({ categories, company }: CompanyModalProps) {
                     {citiesList.length === 0 ? (
                       <SelectItem value="none" disabled>No cities found</SelectItem>
                     ) : (
-                      // ✅ FIX: Deduplicate cities by name to prevent "Duplicate Key" errors
                       Array.from(new Map(citiesList.map(city => [city.name, city])).values())
                         .map((city) => {
 
                           let displayName = city.name;
-
-                          // (Optional: Keep your Delhi Patch here if you want)
                           if (selectedStateName === "Delhi" || selectedStateName === "NCT") {
                             const genericNames = ["West", "North", "South", "East", "Central", "North West", "North East", "South West", "South East", "Shahdara"];
                             if (genericNames.includes(city.name)) {
@@ -461,18 +460,21 @@ export function CompanyModal({ categories, company }: CompanyModalProps) {
             </div>
           </div>
 
-          <div className="flex flex-col gap-3 border p-4 rounded-md bg-gray-50/50">
-            <div className="flex items-center space-x-2">
-              <Checkbox id="claimed" checked={isClaimed} onCheckedChange={(c) => setIsClaimed(c as boolean)} />
-              <Label htmlFor="claimed" className="text-sm font-medium">Business Claimed</Label>
+          {/* ✅ 3. RESTRICTED SECTION: Hidden for DATA_ENTRY role */}
+          {userRole !== 'DATA_ENTRY' && (
+            <div className="flex flex-col gap-3 border p-4 rounded-md bg-gray-50/50">
+              <div className="flex items-center space-x-2">
+                <Checkbox id="claimed" checked={isClaimed} onCheckedChange={(c) => setIsClaimed(c as boolean)} />
+                <Label htmlFor="claimed" className="text-sm font-medium">Business Claimed</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox id="domainVerified" checked={isDomainVerified} onCheckedChange={(c) => setIsDomainVerified(c as boolean)} />
+                <Label htmlFor="domainVerified" className="text-sm font-medium flex items-center gap-2">
+                  Domain Verified
+                </Label>
+              </div>
             </div>
-            <div className="flex items-center space-x-2">
-              <Checkbox id="domainVerified" checked={isDomainVerified} onCheckedChange={(c) => setIsDomainVerified(c as boolean)} />
-              <Label htmlFor="domainVerified" className="text-sm font-medium flex items-center gap-2">
-                Domain Verified
-              </Label>
-            </div>
-          </div>
+          )}
 
           {state?.error && <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">{state.error}</div>}
 

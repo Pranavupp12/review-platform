@@ -18,6 +18,7 @@ enum Role {
   USER
   ADMIN
   BUSINESS
+  DATA_ENTRY
 }
 
 enum CompanyType {
@@ -95,6 +96,7 @@ model User {
   companyId     String?   @db.ObjectId 
   company       Company?  @relation(fields: [companyId], references: [id])
   claims        BusinessClaim[]
+  pendingChanges PendingChange[]
   
   createdAt     DateTime?  @default(now())
   updatedAt     DateTime?  @updatedAt
@@ -414,6 +416,28 @@ model Campaign {
   sentCount   Int      @default(0)
   sentAt      DateTime?
 
+  templateType  String   @default("INVITE") 
+  buttonText    String? 
+  buttonUrl     String? 
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model PendingChange {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  model       String  
+  action      String   
+  targetId    String?  
+  
+  data        Json   
+  
+  status      String   @default("PENDING") 
+  adminNote   String?  
+  
+  requesterId String   @db.ObjectId
+  requester   User     @relation(fields: [requesterId], references: [id])
+  
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }

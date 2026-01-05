@@ -1,6 +1,16 @@
 // lib/data.ts
 import { PrismaClient } from "@prisma/client";
 
+function getOptimizedUrl(url: string | null, width: number = 800) {
+  if (!url) return null;
+  if (!url.includes("cloudinary")) return url; // Skip non-cloudinary images
+  // If already optimized, return as is
+  if (url.includes("f_auto") || url.includes("q_auto")) return url;
+
+  // Inject transformation params after '/upload/'
+  return url.replace("/upload/", `/upload/w_${width},q_auto,f_auto/`);
+}
+
 // --- 1. Define Types ---
 export type CompanyWithRating = {
   id: string;
@@ -110,13 +120,11 @@ export async function getTopRatedCompanies() {
 
   // 3. Helper to format data
   const formatCompanyData = (company: any) => {
-    // --- CHANGE 1: REMOVED MANUAL CALCULATION ---
-    // We now read directly from the database fields
     return {
       id: company.id,
       name: company.name,
       slug: company.slug,
-      logoImage: company.logoImage,
+      logoImage: getOptimizedUrl(company.logoImage, 200),
       rating: company.rating || 0, // <--- READS SMART SCORE
       reviewCount: company.reviewCount || 0, // <--- READS CACHED COUNT
       badges: company.badges || [],
@@ -166,7 +174,7 @@ export async function getRecentReviews(limit = 8) {
     userInitials: review.user.name
       ? review.user.name.substring(0, 2).toUpperCase()
       : "NA",
-    userAvatarUrl: review.user.image,
+    userAvatarUrl: getOptimizedUrl(review.user.image, 100),
     rating: review.starRating,
     reviewText: review.comment || "",
     createdAt: review.createdAt,
@@ -174,7 +182,7 @@ export async function getRecentReviews(limit = 8) {
     companyName: review.company.name,
     companySlug: review.company.slug,
     companyDomain: review.company.websiteUrl || "",
-    companyLogoUrl: review.company.logoImage || "",
+    companyLogoUrl: getOptimizedUrl(review.company.logoImage, 100),
   }));
 }
 
@@ -191,7 +199,7 @@ export async function getCompaniesForBrowsing() {
     return {
       id: company.id,
       name: company.name,
-      logoImage: company.logoImage,
+      logoImage: getOptimizedUrl(company.logoImage, 200),
       websiteUrl: company.websiteUrl,
       rating: company.rating || 0, // <--- READ DB
       reviewCount: company.reviewCount || 0, // <--- READ DB
@@ -223,11 +231,12 @@ export async function getSubCategoryCompanies(
   try {
     const companyWhereClause: any = {};
     if (filters?.claimed === "true") companyWhereClause.claimed = true;
-    if (filters?.country && filters.country !== "all") companyWhereClause.country = filters.country;
+    if (filters?.country && filters.country !== "all")
+      companyWhereClause.country = filters.country;
     if (filters?.city) {
       companyWhereClause.OR = [
         { city: { contains: filters.city, mode: "insensitive" } },
-        { isSponsored: true } 
+        { isSponsored: true },
       ];
     }
 
@@ -238,10 +247,21 @@ export async function getSubCategoryCompanies(
         companies: {
           where: companyWhereClause,
           select: {
-            id: true, slug: true, name: true, logoImage: true, websiteUrl: true,
-            address: true, rating: true, reviewCount: true, badges: true,
-            city: true, country: true, claimed: true, createdAt: true,
-            isSponsored: true, sponsoredScope: true,
+            id: true,
+            slug: true,
+            name: true,
+            logoImage: true,
+            websiteUrl: true,
+            address: true,
+            rating: true,
+            reviewCount: true,
+            badges: true,
+            city: true,
+            country: true,
+            claimed: true,
+            createdAt: true,
+            isSponsored: true,
+            sponsoredScope: true,
           },
         },
       },
@@ -253,7 +273,10 @@ export async function getSubCategoryCompanies(
       ...c,
       rating: c.rating || 0,
       reviewCount: c.reviewCount || 0,
-      badges: (Array.isArray(c.badges) ? [...c.badges] : []).filter((b) => b !== "MOST_RELEVANT"),
+      logoImage: getOptimizedUrl(c.logoImage, 200),
+      badges: (Array.isArray(c.badges) ? [...c.badges] : []).filter(
+        (b) => b !== "MOST_RELEVANT"
+      ),
     }));
 
     const sponsored = [];
@@ -262,21 +285,22 @@ export async function getSubCategoryCompanies(
 
     for (const company of allCompanies) {
       if (company.isSponsored) {
-         if (company.sponsoredScope === "GLOBAL") {
+        if (company.sponsoredScope === "GLOBAL") {
+          sponsored.push(company);
+        } else if (company.sponsoredScope === "LOCAL") {
+          const companyCity = company.city?.toLowerCase() || "";
+          if (searchCity && companyCity.includes(searchCity)) {
             sponsored.push(company);
-         } else if (company.sponsoredScope === "LOCAL") {
-            const companyCity = company.city?.toLowerCase() || "";
-            if (searchCity && companyCity.includes(searchCity)) {
-                sponsored.push(company);
-            } else {
-                organic.push(company);
-            }
-         } else {
+          } else {
             organic.push(company);
-         }
+          }
+        } else {
+          organic.push(company);
+        }
       } else {
-         if (searchCity && !company.city?.toLowerCase().includes(searchCity)) continue; 
-         organic.push(company);
+        if (searchCity && !company.city?.toLowerCase().includes(searchCity))
+          continue;
+        organic.push(company);
       }
     }
 
@@ -288,7 +312,7 @@ export async function getSubCategoryCompanies(
     const isDefaultSort = !filters?.sort || filters.sort === "relevant";
     if (isDefaultSort) {
       for (let i = 0; i < organic.length; i++) {
-         if (i < 5) organic[i].badges = ["MOST_RELEVANT", ...organic[i].badges];
+        if (i < 5) organic[i].badges = ["MOST_RELEVANT", ...organic[i].badges];
       }
     }
 
@@ -326,27 +350,39 @@ export async function getCategoryCompanies(
 
   try {
     const companyWhereClause: any = {};
-    if (filters?.claimed === 'true') companyWhereClause.claimed = true;
-    if (filters?.country && filters.country !== 'all') companyWhereClause.country = filters.country;
-    
+    if (filters?.claimed === "true") companyWhereClause.claimed = true;
+    if (filters?.country && filters.country !== "all")
+      companyWhereClause.country = filters.country;
+
     if (filters?.city) {
-        companyWhereClause.OR = [
-            { city: { contains: filters.city, mode: 'insensitive' } },
-            { isSponsored: true }
-        ];
+      companyWhereClause.OR = [
+        { city: { contains: filters.city, mode: "insensitive" } },
+        { isSponsored: true },
+      ];
     }
 
     const category = await prisma.category.findFirst({
       where: { slug: categorySlug },
       include: {
-        subCategories: { orderBy: { name: 'asc' } },
+        subCategories: { orderBy: { name: "asc" } },
         companies: {
           where: companyWhereClause,
           select: {
-            id: true, slug: true, name: true, logoImage: true, websiteUrl: true,
-            address: true, rating: true, reviewCount: true, badges: true,
-            city: true, country: true, claimed: true, createdAt: true,
-            isSponsored: true, sponsoredScope: true,
+            id: true,
+            slug: true,
+            name: true,
+            logoImage: true,
+            websiteUrl: true,
+            address: true,
+            rating: true,
+            reviewCount: true,
+            badges: true,
+            city: true,
+            country: true,
+            claimed: true,
+            createdAt: true,
+            isSponsored: true,
+            sponsoredScope: true,
           },
         },
       },
@@ -354,11 +390,14 @@ export async function getCategoryCompanies(
 
     if (!category) return null;
 
-    let allCompanies = category.companies.map(c => ({
+    let allCompanies = category.companies.map((c) => ({
       ...c,
       rating: c.rating || 0,
       reviewCount: c.reviewCount || 0,
-      badges: (Array.isArray(c.badges) ? [...c.badges] : []).filter(b => b !== "MOST_RELEVANT"),
+      logoImage: getOptimizedUrl(c.logoImage, 200),
+      badges: (Array.isArray(c.badges) ? [...c.badges] : []).filter(
+        (b) => b !== "MOST_RELEVANT"
+      ),
     }));
 
     const sponsored = [];
@@ -368,23 +407,23 @@ export async function getCategoryCompanies(
     // Separate Sponsored vs Organic
     for (const company of allCompanies) {
       if (company.isSponsored) {
-         if (company.sponsoredScope === "GLOBAL") {
+        if (company.sponsoredScope === "GLOBAL") {
+          sponsored.push(company);
+        } else if (company.sponsoredScope === "LOCAL") {
+          const companyCity = company.city?.toLowerCase() || "";
+          if (searchCity && companyCity.includes(searchCity)) {
             sponsored.push(company);
-         } else if (company.sponsoredScope === "LOCAL") {
-            const companyCity = company.city?.toLowerCase() || "";
-            if (searchCity && companyCity.includes(searchCity)) {
-                sponsored.push(company);
-            } else {
-                organic.push(company);
-            }
-         } else {
+          } else {
             organic.push(company);
-         }
+          }
+        } else {
+          organic.push(company);
+        }
       } else {
-         if (searchCity && !company.city?.toLowerCase().includes(searchCity)) {
-             continue;
-         }
-         organic.push(company);
+        if (searchCity && !company.city?.toLowerCase().includes(searchCity)) {
+          continue;
+        }
+        organic.push(company);
       }
     }
 
@@ -395,19 +434,19 @@ export async function getCategoryCompanies(
     organic = sortCompanies(organic, filters?.sort || "relevant");
 
     // Award Badges ONLY if sorting by "Relevant" (Default)
-    const isDefaultSort = !filters?.sort || filters.sort === 'relevant';
+    const isDefaultSort = !filters?.sort || filters.sort === "relevant";
     if (isDefaultSort) {
       for (let i = 0; i < organic.length; i++) {
         if (i < 5) {
-            organic[i].badges = ["MOST_RELEVANT", ...organic[i].badges];
+          organic[i].badges = ["MOST_RELEVANT", ...organic[i].badges];
         }
       }
     }
 
     // Apply Rating Filter
-    if (filters?.rating && filters.rating !== 'all') {
+    if (filters?.rating && filters.rating !== "all") {
       const minRating = parseFloat(filters.rating);
-      organic = organic.filter(c => c.rating >= minRating);
+      organic = organic.filter((c) => c.rating >= minRating);
       // We don't filter sponsored items by rating usually, but you can if you want:
       // sortedSponsored = sortedSponsored.filter(c => c.rating >= minRating);
     }
@@ -422,11 +461,10 @@ export async function getCategoryCompanies(
       name: category.name,
       slug: category.slug,
       subCategories: category.subCategories,
-      featuredCompanies: sortedSponsored, 
-      companies: paginatedOrganic,  
-      pagination: { totalItems, pageSize: PAGE_SIZE, currentPage: page }
+      featuredCompanies: sortedSponsored,
+      companies: paginatedOrganic,
+      pagination: { totalItems, pageSize: PAGE_SIZE, currentPage: page },
     };
-
   } catch (error) {
     console.error("Database Error:", error);
     return null;
@@ -478,14 +516,14 @@ export async function getCompanyBySlug(
     // --- 1. UPDATED: Keywords Calculation ---
     // We must split the stored string "topic:sentiment:snippet" to count just the "topic"
     const counts: Record<string, number> = {};
-    
+
     company.reviews.forEach((r) => {
       r.keywords.forEach((k) => {
         // Split by ':' and take the first part (Topic)
         // This converts "staff:positive:manager" -> "staff"
-        const topic = k.split(':')[0].trim().toLowerCase(); 
+        const topic = k.split(":")[0].trim().toLowerCase();
         if (topic) {
-           counts[topic] = (counts[topic] || 0) + 1;
+          counts[topic] = (counts[topic] || 0) + 1;
         }
       });
     });
@@ -516,8 +554,8 @@ export async function getCompanyBySlug(
       filteredReviews = filteredReviews.filter((r) => {
         // Check if ANY keyword in the review has a matching TOPIC
         return r.keywords.some((k) => {
-           const topic = k.split(':')[0]; // Extract "topic" from "topic:sentiment:snippet"
-           return normalize(topic) === searchTag;
+          const topic = k.split(":")[0]; // Extract "topic" from "topic:sentiment:snippet"
+          return normalize(topic) === searchTag;
         });
       });
     }
@@ -551,8 +589,9 @@ export async function getCompanyBySlug(
       ...company,
       rating: company.rating || 0,
       reviewCount: company.reviewCount || 0,
+      logoImage: getOptimizedUrl(company.logoImage, 200),
       distribution,
-      topKeywords, // Now contains clean topics like "staff", "service", etc.
+      topKeywords,
 
       pagination: {
         totalItems: totalFilteredCount,
@@ -565,7 +604,7 @@ export async function getCompanyBySlug(
         user: {
           id: r.user.id,
           name: r.user.name,
-          image: r.user.image,
+          image: getOptimizedUrl(r.user.image, 100) || "",
           country: r.user.country,
           totalReviews: r.user._count.reviews,
         },
@@ -574,7 +613,7 @@ export async function getCompanyBySlug(
         starRating: r.starRating,
         reviewTitle: r.reviewTitle,
         comment: r.comment,
-        relatedImages: r.relatedImages,
+        relatedImages: r.relatedImages.map((img) => getOptimizedUrl(img, 800)).filter((url): url is string => url !== null),
         ownerReply: r.ownerReply,
         ownerReplyDate: r.ownerReplyDate,
         // @ts-ignore
@@ -664,7 +703,10 @@ export async function getSimilarCompanies(
       },
     });
 
-    return similar;
+    return similar.map((c) => ({
+      ...c,
+      logoImage: getOptimizedUrl(c.logoImage, 200),
+    }));
   } catch (error) {
     console.error("Failed to fetch similar companies:", error);
     return [];

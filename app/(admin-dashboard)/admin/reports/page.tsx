@@ -6,6 +6,8 @@ import { ArchiveReportButton } from '@/components/admin_components/archive-repor
 import { PaginationControls } from '@/components/shared/pagination-controls';
 import { ReportFilters } from '@/components/admin_components/page-filters/report-filters'; // ✅ Import Filters
 import { Inbox } from 'lucide-react';
+import { auth } from '@/auth';
+import { redirect } from 'next/navigation';
 
 // Import Prisma types
 import { Prisma } from '@prisma/client';
@@ -23,6 +25,15 @@ type PageProps = {
 };
 
 export default async function AdminReportsPage({ searchParams }: PageProps) {
+
+  const session = await auth();
+
+  // 🔒 Security Check
+  if (session?.user?.role !== "ADMIN") {
+    // If they are DATA_ENTRY, kick them out
+    return redirect("/admin/companies"); 
+  }
+
   const resolvedSearchParams = await searchParams;
   
   const page = Number(resolvedSearchParams.page) || 1;

@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { PlanToggle } from "@/components/admin_components/plan-toggle";
 import { PaginationControls } from "@/components/shared/pagination-controls";
 import { PlanFilters } from "@/components/admin_components/page-filters/plan-filters";
-import { Building2, Inbox } from "lucide-react"; // Removed Sparkles import
+import { Building2, Inbox } from "lucide-react"; 
 import { Prisma } from '@prisma/client';
 
 export const metadata = { title: 'Manage Plans - Admin' };
@@ -31,7 +31,11 @@ type PageProps = {
 
 export default async function ManagePlansPage({ searchParams }: PageProps) {
   const session = await auth();
-  if (!session?.user) return redirect("/"); 
+  
+  if (session?.user?.role !== "ADMIN") {
+    // If they are DATA_ENTRY, kick them out
+    return redirect("/admin/companies"); 
+  }
 
   const resolvedSearchParams = await searchParams;
   

@@ -1,22 +1,16 @@
 import { prisma } from '@/lib/prisma';
-import { MapPin, Globe, Star, BarChart3, Inbox, Lock } from 'lucide-react';
-import { DeleteItemButton } from '@/components/admin_components/delete-item-button';
-import { adminDeleteCompany } from '@/lib/actions';
-import { CompanyModal } from '@/components/admin_components/company-modal';
+import { auth } from '@/auth'; // ✅ 1. Import Auth
+import { MapPin, Globe, Star, Inbox, Lock, Building2 } from 'lucide-react';
+import { CompanyModal } from '@/components/admin_components/company-modal'; 
+import { CompanyDetailsModal } from '@/components/admin_components/company-details-modal'; 
 import Link from 'next/link';
 import Image from 'next/image';
-import { Button } from '@/components/ui/button';
 import { PaginationControls } from '@/components/shared/pagination-controls';
-import { BadgeModal } from '@/components/admin_components/badge-modal';
-import { CompanyDetailsModal } from '@/components/admin_components/company-details-modal';
-import { FeaturedToggle } from '@/components/admin_components/featured-toggle';
 import { CompanyFilters } from '@/components/admin_components/page-filters/company-filters';
-import { SponsoredModal } from '@/components/admin_components/sponsored-modal';
-import { FreezeCompanyDialog } from "@/components/admin_components/freeze-company-dialog"; 
-import { auth } from '@/auth'; // ✅ 1. Import Auth
+
 import { Prisma } from '@prisma/client';
 
-export const metadata = { title: 'Manage Companies - Admin' };
+export const metadata = { title: 'Manage Companies - Data Entry' };
 
 type PageProps = {
   searchParams: Promise<{
@@ -27,13 +21,13 @@ type PageProps = {
   }>;
 };
 
-export default async function AdminCompaniesPage({ searchParams }: PageProps) {
+export default async function DataEntryCompaniesPage({ searchParams }: PageProps) {
+  const resolvedSearchParams = await searchParams;
 
+  // ✅ 2. GET USER ROLE FROM SESSION
   const session = await auth();
   // @ts-ignore
-  const userRole = session?.user?.role || "ADMIN";
-
-  const resolvedSearchParams = await searchParams;
+  const userRole = session?.user?.role || "DATA_ENTRY"; // Default to DATA_ENTRY if undefined
 
   const page = Number(resolvedSearchParams.page) || 1;
   const pageSize = 10;
@@ -75,8 +69,6 @@ export default async function AdminCompaniesPage({ searchParams }: PageProps) {
       skip: skip,
       take: pageSize,
       include: {
-        // Prisma `include` automatically fetches all scalar fields (like isFrozen, claimedAt)
-        // so we don't need to explicitly select them here.
         category: true,
         subCategory: true,
         _count: { select: { reviews: true } }
@@ -92,9 +84,13 @@ export default async function AdminCompaniesPage({ searchParams }: PageProps) {
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Manage Companies</h1>
-          <p className="text-sm text-gray-500">View and manage business profiles</p>
+          <h1 className="text-2xl font-bold text-[#000032] flex items-center gap-2">
+             <Building2 className="h-6 w-6 text-[#0ABED6]" /> Companies
+          </h1>
+          <p className="text-sm text-gray-500">View and edit company details.</p>
         </div>
+        
+        {/* ✅ 3. PASS userRole TO CREATE MODAL */}
         <CompanyModal categories={categories} userRole={userRole} />
       </div>
 
@@ -119,7 +115,6 @@ export default async function AdminCompaniesPage({ searchParams }: PageProps) {
                   <th className="px-6 py-3">Category</th>
                   <th className="px-6 py-3">Location</th>
                   <th className="px-6 py-3">Status</th>
-                  <th className="px-6 py-3 text-center">Featured</th>
                   <th className="px-6 py-3 text-right">Actions</th>
                 </tr>
               </thead>
@@ -127,8 +122,7 @@ export default async function AdminCompaniesPage({ searchParams }: PageProps) {
                 {companies.map((company) => (
                   <tr
                     key={company.id}
-                    // ✅ 2. Optional: Red tint if frozen
-                    className={`transition-colors ${company.isFrozen ? "bg-red-50/60 hover:bg-red-50" : "hover:bg-gray-50"}`}
+                    className={`transition-colors ${company.isFrozen ? "bg-red-50/60" : "hover:bg-gray-50"}`}
                   >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
@@ -150,7 +144,6 @@ export default async function AdminCompaniesPage({ searchParams }: PageProps) {
                                 •<Globe className="h-3 w-3" /> {company.websiteUrl}
                               </span>
                             )}
-                            <span>• {company._count.reviews} Reviews</span>
                           </div>
                         </div>
                       </div>
@@ -167,15 +160,12 @@ export default async function AdminCompaniesPage({ searchParams }: PageProps) {
                       </div>
                     </td>
 
-                    {/* Status Column */}
                     <td className="px-6 py-4">
                       {company.isFrozen ? (
-                        /* PRIORITY 1: If Frozen, show ONLY Frozen badge */
                         <span className="text-[10px] font-bold bg-red-100 text-red-600 px-2 py-1 rounded border border-red-200 flex items-center gap-1 w-fit">
                           <Lock className="h-3 w-3" /> FROZEN
                         </span>
                       ) : (
-                        /* PRIORITY 2: If NOT Frozen, show Claimed/Unclaimed */
                         company.claimed ? (
                           <span className="text-emerald-600 font-bold text-xs flex items-center gap-1">
                             ● Claimed
@@ -188,48 +178,18 @@ export default async function AdminCompaniesPage({ searchParams }: PageProps) {
                       )}
                     </td>
 
-                    <td className="px-6 py-4 text-center">
-                      <FeaturedToggle
-                        companyId={company.id}
-                        isFeatured={company.featured}
-                      />
-                    </td>
-
                     <td className="px-6 py-4 text-right">
                       <div className="flex justify-end gap-2">
-
-                        {/* ✅ 4. ADD FREEZE MODAL HERE */}
-                        {/* It handles the countdown logic internally */}
-                        <FreezeCompanyDialog company={company} />
-
-                        <SponsoredModal
-                          companyId={company.id}
-                          companyName={company.name}
-                          initialSponsored={company.isSponsored}
-                          initialScope={company.sponsoredScope}
-                        />
-
-                        <BadgeModal
-                          companyId={company.id}
-                          companyName={company.name}
-                          currentBadges={company.badges || []}
-                        />
-
+                        
                         <CompanyDetailsModal company={company} />
 
-                        <CompanyModal categories={categories} company={company} userRole={userRole} />
-
-                        <DeleteItemButton
-                          id={company.id}
-                          itemName={company.name}
-                          deleteAction={adminDeleteCompany}
+                        {/* ✅ 4. PASS userRole TO EDIT MODAL */}
+                        <CompanyModal 
+                           categories={categories} 
+                           company={company} 
+                           userRole={userRole} 
                         />
-
-                        <Link href={`/admin/companies/${company.id}/analytics`}>
-                          <Button variant="ghost" size="icon" className="text-blue-600 hover:bg-blue-50" title="View Analytics">
-                            <BarChart3 className="h-4 w-4" />
-                          </Button>
-                        </Link>
+                        
                       </div>
                     </td>
                   </tr>

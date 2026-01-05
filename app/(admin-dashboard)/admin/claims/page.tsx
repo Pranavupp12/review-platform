@@ -7,10 +7,20 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { ClaimActionButtons } from "@/components/admin_components/claim-action-buttons";
 import { ClaimDetailsModal } from "@/components/admin_components/claim-details-modal";
+import { auth } from "@/auth";
+import { redirect } from "next/navigation";
 
 export const metadata = { title: 'Business Claims - Admin' };
 
 export default async function AdminClaimsPage() {
+
+  const session = await auth();
+
+  // 🔒 Security Check
+  if (session?.user?.role !== "ADMIN") {
+    // If they are DATA_ENTRY, kick them out
+    return redirect("/admin/companies"); 
+  }
   
   const claims = await prisma.businessClaim.findMany({
     where: { status: "PENDING" },

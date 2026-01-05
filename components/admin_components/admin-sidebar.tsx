@@ -14,7 +14,9 @@ import {
   VerifiedIcon,
   List,
   Newspaper,
-  Crown
+  Crown,
+  Users,
+  ShieldCheck,
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import Link from "next/link";
@@ -65,23 +67,85 @@ const staggerVariants = {
   },
 };
 
-// --- 2. ADD REPORTS LINK HERE ---
 const ADMIN_LINKS = [
-  { name: "Overview", href: "/admin", icon: LayoutDashboard },
-  { name: "Companies", href: "/admin/companies", icon: Building2 },
-  { name: "Reviews", href: "/admin/reviews", icon: MessageSquare },
-  { name: "Reports", href: "/admin/reports", icon: ShieldAlert },
-  { name: 'Support Inbox',href: '/admin/support',icon: LifeBuoy },
-  { name: "Claims",href:"/admin/claims",icon:VerifiedIcon },
-  { name: "Categories",href:"/admin/categories",icon:List },
-  { name: "Blog Management",href:"/admin/blogs",icon:Newspaper},
-  { name: "Manage Plans",href:"/admin/plans",icon:Crown},
-
+  { 
+    name: "Overview", 
+    href: "/admin", // Will become /data-entry for staff
+    icon: LayoutDashboard,
+    roles: ["ADMIN", "DATA_ENTRY"] // Added DATA_ENTRY here so they see a "Home" button
+  },
+  { 
+    name: "Companies", 
+    href: "/admin/companies", 
+    icon: Building2, 
+    roles: ["ADMIN", "DATA_ENTRY"] 
+  },
+  { 
+    name: "Blog Management", 
+    href: "/admin/blogs", 
+    icon: Newspaper,
+    roles: ["ADMIN", "DATA_ENTRY"] 
+  },
+  { 
+    name: "Manage Staff", 
+    href: "/admin/staff", 
+    icon: Users,
+    roles: ["ADMIN"] 
+  },
+  { 
+    name: "Reviews", 
+    href: "/admin/reviews", 
+    icon: MessageSquare,
+    roles: ["ADMIN"]
+  },
+  { 
+    name: "Reports", 
+    href: "/admin/reports", 
+    icon: ShieldAlert,
+    roles: ["ADMIN"]
+  },
+  { 
+    name: 'Support Inbox',
+    href: '/admin/support',
+    icon: LifeBuoy,
+    roles: ["ADMIN"]
+  },
+  { 
+    name: "Claims",
+    href:"/admin/claims",
+    icon:VerifiedIcon,
+    roles: ["ADMIN"]
+  },
+  { 
+    name: "Categories",
+    href:"/admin/categories",
+    icon:List,
+    roles: ["ADMIN"]
+  },
+  { 
+    name: "Manage Plans",
+    href:"/admin/plans",
+    icon:Crown,
+    roles: ["ADMIN"]
+  },
+  { 
+  name: "Data Approval", 
+  href: "/admin/data-approval", 
+  icon: ShieldCheck, 
+  roles: ["ADMIN"] 
+},
 ];
 
-export function AdminSidebar() {
+interface AdminSidebarProps {
+  userRole?: string;
+  userName?: string;
+}
+
+export function AdminSidebar({ userRole = "DATA_ENTRY", userName = "Admin" }: AdminSidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(true);
   const pathname = usePathname();
+
+  const visibleLinks = ADMIN_LINKS.filter(link => link.roles.includes(userRole));
 
   return (
     <motion.div
@@ -113,7 +177,9 @@ export function AdminSidebar() {
                       className="flex w-full justify-start items-center gap-2 px-2 hover:bg-gray-800 hover:text-white"
                     >
                       <Avatar className='rounded size-6 bg-[#0ABED6]'>
-                        <AvatarFallback className="text-black font-bold">A</AvatarFallback>
+                        <AvatarFallback className="text-black font-bold">
+                           {userName.charAt(0).toUpperCase()}
+                        </AvatarFallback>
                       </Avatar>
                       <motion.li
                         variants={variants}
@@ -122,8 +188,10 @@ export function AdminSidebar() {
                         {!isCollapsed && (
                           <>
                             <div className="flex flex-col items-start text-left">
-                              <p className="text-sm font-bold text-white">Admin Panel</p>
-                              <p className="text-[10px] text-gray-500">Super Admin</p>
+                              <p className="text-sm font-bold text-white truncate max-w-[110px]">{userName}</p>
+                              <p className="text-[10px] text-gray-500">
+                                {userRole === "ADMIN" ? "Super Admin" : "Data Staff"}
+                              </p>
                             </div>
                             <ChevronsUpDown className="ml-auto h-4 w-4 text-gray-500" />
                           </>
@@ -146,13 +214,24 @@ export function AdminSidebar() {
             {/* Navigation Links */}
             <div className="flex h-full w-full flex-col pt-4">
               <div className="flex grow flex-col gap-2 px-2">
-                {/* Map through the links array */}
-                {ADMIN_LINKS.map((link) => {
-                  const isActive = pathname === link.href;
+                {visibleLinks.map((link) => {
+                  
+                  // ✅ FIX: DYNAMICALLY UPDATE HREF FOR DATA ENTRY
+                  let href = link.href;
+                  if (userRole === 'DATA_ENTRY') {
+                    // Replace '/admin' with '/data-entry'
+                    href = href.replace('/admin', '/data-entry');
+                    
+                    // Special case: if it is just '/data-entry' (dashboard home)
+                    if (href === '/data-entry') href = '/data-entry'; 
+                  }
+
+                  const isActive = pathname === href;
+
                   return (
                     <Link
                       key={link.name}
-                      href={link.href}
+                      href={href}
                       className={cn(
                         "flex h-10 w-full flex-row items-center rounded-md px-2 transition-all",
                         isActive
@@ -172,19 +251,21 @@ export function AdminSidebar() {
               </div>
 
               {/* Bottom Settings Link */}
-              <div className="p-2 border-t border-gray-800 mt-auto">
-                <Link
-                  href="/admin/settings"
-                  className="flex h-10 w-full flex-row items-center rounded-md px-2 transition hover:bg-gray-800 hover:text-white"
-                >
-                  <Settings className="h-5 w-5 shrink-0" />
-                  <motion.li variants={variants}>
-                    {!isCollapsed && (
-                      <p className="ml-3 text-sm font-medium">Settings</p>
-                    )}
-                  </motion.li>
-                </Link>
-              </div>
+              {userRole === "ADMIN" && (
+                <div className="p-2 border-t border-gray-800 mt-auto">
+                  <Link
+                    href="/admin/settings"
+                    className="flex h-10 w-full flex-row items-center rounded-md px-2 transition hover:bg-gray-800 hover:text-white"
+                  >
+                    <Settings className="h-5 w-5 shrink-0" />
+                    <motion.li variants={variants}>
+                      {!isCollapsed && (
+                        <p className="ml-3 text-sm font-medium">Settings</p>
+                      )}
+                    </motion.li>
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
         </motion.ul>

@@ -455,38 +455,45 @@ export type ReviewTopic = {
   snippet: string; // ✅ NEW FIELD
 };
 
-export async function generateReviewKeywords(reviewText: string): Promise<ReviewTopic[]> {
+export async function generateReviewKeywords(reviewText: string): Promise<string[]> {
+  // 1. Fail fast for short text
   if (!reviewText || reviewText.length < 10) return [];
 
   try {
     const prompt = `
       Perform Aspect-Based Sentiment Analysis (ABSA) on this review.
-      Extract main TOPICS, assign a SENTIMENT, and identify the exact text SNIPPET.
-
+      
       Review: "${reviewText}"
 
-      ### Rules for Extraction:
-      1. **Standardize Topics:** Map specific keywords to these core categories:
-         - "waiter", "manager", "staff", "reception" -> "staff"
-         - "support", "agent", "help desk", "service" -> "customer support"
-         - "cost", "price", "expensive", "cheap", "value" -> "price"
-         - "shipping", "delivery", "arrived late", "package" -> "shipping"
-         - "quality", "broken", "flimsy", "durable" -> "product quality"
-         - "app", "website", "ui", "login", "glitch" -> "technical performance"
-         - "clean", "dirty", "hygiene", "messy" -> "cleanliness"
-         - "refund", "money back", "chargeback" -> "refunds"
-         - "communication", "emails", "updates", "ghosted" -> "communication"
-      
-      2. **Contextual Sentiment:** Determine sentiment (positive/negative/neutral) for *each specific topic* based on the text.
-      
-      3. **Snippet Extraction:** Extract the EXACT word or short phrase from the original text that refers to the topic.
-         - Example Text: "The waiter was rude." -> Topic: "staff", Sentiment: "negative", Snippet: "waiter"
-         - Example Text: "Too expensive." -> Topic: "price", Sentiment: "negative", Snippet: "expensive"
+      ### Task:
+      Identify specific topics, assign a sentiment, and extract the exact text snippet that justifies the sentiment.
 
-      4. **Mixed Sentiment:** If a topic has mixed feedback, mark as "negative".
-      
-      5. **Output Format:** Return ONLY a valid JSON array of objects.
-         Example: [{"topic": "staff", "sentiment": "positive", "snippet": "waiter"}, {"topic": "price", "sentiment": "negative", "snippet": "price"}]
+      ### Rules:
+      1. **Standardize Topics:** Map keywords to these core categories:
+         - "staff", "service", "waiter", "manager" -> "staff"
+         - "price", "cost", "value", "expensive" -> "price"
+         - "shipping", "delivery", "package" -> "shipping"
+         - "quality", "product", "material" -> "product quality"
+         - "technical", "app", "website", "glitch" -> "technical issues"
+         - "cleanliness", "dirty", "hygiene" -> "cleanliness"
+         - "communication", "updates", "email" -> "communication"
+
+      2. **Sentiment Logic (Crucial):**
+         - "positive": Praise, happiness, advantages.
+         - "negative": Complaints, anger, bugs, issues.
+         - "neutral": Constructive criticism (e.g., "good but..."), mixed feelings (e.g., "fast shipping but damaged box"), or factual statements (e.g., "average experience").
+         
+         **IMPORTANT:** Do NOT default mixed feedback to negative. Mark it as "neutral".
+
+      3. **Snippet Extraction (Highlighter Logic):**
+         - Do not extract just one word. Extract the **noun + the adjective/verb**.
+         - Bad: "waiter" 
+         - Good: "waiter was rude"
+         - Bad: "price"
+         - Good: "price is too high"
+         - The snippet must be an exact substring from the review.
+
+      4. **Output Format:** Return a JSON array of objects: [{"topic": "string", "sentiment": "string", "snippet": "string"}]
     `;
 
     const result = await model.generateContent(prompt);
@@ -496,22 +503,23 @@ export async function generateReviewKeywords(reviewText: string): Promise<Review
     const jsonString = text.replace(/```json|```/g, "").trim();
     const rawData = JSON.parse(jsonString);
 
-    // Validate and clean structure
     if (!Array.isArray(rawData)) return [];
 
-    // Deduplicate by topic (taking the last occurrence if duplicates exist)
-    const uniqueMap = new Map();
-    rawData.forEach((item) => {
-      if (item.topic && item.sentiment && item.snippet) {
-        uniqueMap.set(item.topic.toLowerCase(), {
-          topic: item.topic.toLowerCase(),
-          sentiment: item.sentiment.toLowerCase(),
-          snippet: item.snippet.toLowerCase() // ✅ Capture the snippet
-        });
-      }
-    });
+    // 5. Transform to "topic:sentiment:snippet" format for the DB
+    const formattedKeywords: string[] = rawData
+      .filter(item => item.topic && item.sentiment && item.snippet)
+      .map(item => {
+        // Clean snippet to ensure it matches specific highlighting rules if needed
+        const cleanSnippet = item.snippet.trim();
+        const cleanTopic = item.topic.toLowerCase();
+        const cleanSentiment = item.sentiment.toLowerCase();
 
-    return Array.from(uniqueMap.values());
+        // Return the format your UI expects: "topic:sentiment:snippet"
+        return `${cleanTopic}:${cleanSentiment}:${cleanSnippet}`;
+      });
+
+    // Deduplicate strings
+    return Array.from(new Set(formattedKeywords));
 
   } catch (error) {
     console.error("AI Keyword Extraction Failed:", error);

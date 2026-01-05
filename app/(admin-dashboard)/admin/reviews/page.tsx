@@ -7,6 +7,8 @@ import { PaginationControls } from '@/components/shared/pagination-controls';
 import { ReviewFilters } from '@/components/admin_components/page-filters/review-filters'; // ✅ Import Filters
 import { Inbox } from 'lucide-react';
 import Link from 'next/link';
+import { auth } from '@/auth';
+import { redirect } from 'next/navigation';
 
 // Import Prisma types
 import { Prisma } from '@prisma/client';
@@ -22,7 +24,16 @@ type PageProps = {
 };
 
 export default async function AdminReviewsPage({ searchParams }: PageProps) {
+  const session = await auth();
+
+  // 🔒 Security Check
+  if (session?.user?.role !== "ADMIN") {
+    // If they are DATA_ENTRY, kick them out
+    return redirect("/admin/companies");
+  }
+
   const resolvedSearchParams = await searchParams;
+
   
   const page = Number(resolvedSearchParams.page) || 1;
   const pageSize = 10;
