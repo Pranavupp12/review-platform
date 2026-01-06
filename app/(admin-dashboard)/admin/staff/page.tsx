@@ -11,12 +11,14 @@ export default async function ManageStaffPage() {
   // 🔒 Security: Only ADMIN (Super Admin) can access this page
   // @ts-ignore
   if (session?.user?.role !== "ADMIN") {
-    return redirect("/admin"); // Kick Data Entry staff back to dashboard
+    return redirect("/admin");
   }
 
-  // Fetch only Data Entry staff
+  // ✅ FIX: Fetch BOTH "DATA_ENTRY" and "BLOG_ENTRY" staff
   const staffMembers = await prisma.user.findMany({
-    where: { role: "DATA_ENTRY" },
+    where: { 
+      role: { in: ["DATA_ENTRY", "BLOG_ENTRY"] } // <-- Updated filter
+    },
     orderBy: { createdAt: 'desc' },
     select: {
       id: true,
@@ -36,7 +38,7 @@ export default async function ManageStaffPage() {
            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
               <Users className="h-8 w-8 text-[#0ABED6]" /> Staff Management
            </h1>
-           <p className="text-gray-500 mt-1">Manage accounts for your data entry team.</p>
+           <p className="text-gray-500 mt-1">Manage accounts for your data entry and content team.</p>
         </div>
       </div>
 
@@ -52,11 +54,11 @@ export default async function ManageStaffPage() {
                   <ShieldAlert className="h-4 w-4" /> Access Control
                </div>
                <p>
-                 Staff members created here will <strong>only</strong> have access to:
+                 Staff members created here will have specific dashboard access:
                </p>
                <ul className="list-disc list-inside mt-2 space-y-1 ml-2">
-                 <li>Companies Management</li>
-                 <li>Blog Management</li>
+                 <li><strong>Data Entry:</strong> Companies Management only.</li>
+                 <li><strong>Content Writer:</strong> Blog Management only.</li>
                </ul>
                <p className="mt-2">They cannot see revenue, reports, or manage other staff.</p>
             </div>
@@ -68,6 +70,7 @@ export default async function ManageStaffPage() {
                 <div className="p-4 border-b border-gray-100 bg-gray-50/50">
                     <h2 className="font-semibold text-gray-700">Active Staff Accounts</h2>
                 </div>
+                {/* Now this list will include your Blog Entry staff too */}
                 <StaffList staff={staffMembers} />
             </div>
         </div>

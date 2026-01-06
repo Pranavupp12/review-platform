@@ -10,7 +10,7 @@ import {
   TrendingUp, MessageSquare, AlertTriangle, ThumbsUp, ThumbsDown,
   Lightbulb, Sparkles, BookOpen, Lock,
   Zap, Eye, MousePointerClick, DollarSign, Search, Info, MapPin,
-  Scale,
+  Scale, Phone, FileText, Users,
 } from "lucide-react";
 import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 import { generateCompanyInsight } from "@/lib/search-action";
@@ -23,7 +23,7 @@ import {
   Tooltip as UiTooltip
 } from "@/components/ui/tooltip";
 import { ReviewCard } from "@/components/shared/review-card";
-import  {ComparisonTab}  from "@/components/admin_components/admin-analytics/comparison-tab"; 
+import { ComparisonTab } from "@/components/admin_components/admin-analytics/comparison-tab";
 
 interface CompanyAnalyticsViewProps {
   company: any;
@@ -32,8 +32,7 @@ interface CompanyAnalyticsViewProps {
   searchStats: any;
 }
 
-// ... (Keep existing Helper Components: InfoTooltip, HighlightedText, CustomChartTooltip) ...
-// --- HELPER: InfoTooltip ---
+// ... (Helper Components: InfoTooltip, HighlightedText, CustomChartTooltip - kept exactly as is) ...
 const InfoTooltip = ({ text }: { text: string }) => (
   <TooltipProvider delayDuration={300}>
     <UiTooltip>
@@ -47,80 +46,28 @@ const InfoTooltip = ({ text }: { text: string }) => (
   </TooltipProvider>
 );
 
-// --- HELPER: Keyword Highlighter ---
 const HighlightedText = ({ text, keywords, type }: { text: string, keywords: string[], type: 'positive' | 'negative' | 'neutral' }) => {
   if (!keywords || keywords.length === 0 || !text) return <>{text}</>;
-
-  const snippetsToHighlight = keywords
-    .map(k => {
-      const parts = k.split(':');
-      if (parts.length >= 3) {
-        return parts.slice(2).join(':').trim();
-      }
-      return parts[0].trim();
-    })
-    .filter(k => k.length > 0);
-
+  const snippetsToHighlight = keywords.map(k => { const parts = k.split(':'); if (parts.length >= 3) { return parts.slice(2).join(':').trim(); } return parts[0].trim(); }).filter(k => k.length > 0);
   if (snippetsToHighlight.length === 0) return <>{text}</>;
-
   const escapedSnippets = snippetsToHighlight.map(s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
   const regex = new RegExp(`(${escapedSnippets.join('|')})`, 'gi');
-
   const parts = text.split(regex);
-
-  const highlightClass = 
-    type === 'positive' ? "bg-green-100 text-green-800 px-1 rounded font-medium" :
-    type === 'negative' ? "bg-red-100 text-red-800 px-1 rounded font-medium" :
-    "bg-amber-100 text-amber-900 px-1 rounded font-medium";
-
-  return (
-    <span>
-      {parts.map((part, i) =>
-        snippetsToHighlight.some(k => k.toLowerCase() === part.toLowerCase())
-          ? <span key={i} className={highlightClass}>{part}</span>
-          : <span key={i}>{part}</span>
-      )}
-    </span>
-  );
+  const highlightClass = type === 'positive' ? "bg-green-100 text-green-800 px-1 rounded font-medium" : type === 'negative' ? "bg-red-100 text-red-800 px-1 rounded font-medium" : "bg-amber-100 text-amber-900 px-1 rounded font-medium";
+  return <span>{parts.map((part, i) => snippetsToHighlight.some(k => k.toLowerCase() === part.toLowerCase()) ? <span key={i} className={highlightClass}>{part}</span> : <span key={i}>{part}</span>)}</span>;
 };
 
-// --- HELPER: Custom Chart Tooltip ---
 const CustomChartTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
-    return (
-      <div className="bg-white p-4 border border-gray-100 shadow-xl rounded-xl text-sm min-w-[220px] z-50">
-        <div className="flex items-center justify-between border-b border-gray-100 pb-2 mb-2">
-          <p className="font-bold text-gray-900 capitalize">{data.topic}</p>
-          <span className="text-xs text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded">Avg: {data.avgRating.toFixed(1)} ★</span>
-        </div>
-        <div className="space-y-2">
-          <div className="flex justify-between items-center text-red-700">
-            <span className="flex items-center gap-2 text-xs font-medium"><div className="w-2 h-2 rounded-full bg-red-500" /> Negative</span>
-            <span className="font-bold text-xs">{data.negPct}% <span className="text-gray-400 font-normal">({data.negCount})</span></span>
-          </div>
-          <div className="flex justify-between items-center text-amber-700">
-            <span className="flex items-center gap-2 text-xs font-medium"><div className="w-2 h-2 rounded-full bg-amber-500" /> Neutral</span>
-            <span className="font-bold text-xs">{data.neuPct}% <span className="text-gray-400 font-normal">({data.neuCount})</span></span>
-          </div>
-          <div className="flex justify-between items-center text-green-700">
-            <span className="flex items-center gap-2 text-xs font-medium"><div className="w-2 h-2 rounded-full bg-emerald-500" /> Positive</span>
-            <span className="font-bold text-xs">{data.posPct}% <span className="text-gray-400 font-normal">({data.posCount})</span></span>
-          </div>
-        </div>
-        <div className="mt-3 pt-2 border-t border-gray-100 flex justify-between text-gray-500 text-xs">
-          <span>Total Mentions</span>
-          <span className="font-medium text-gray-900">{data.total}</span>
-        </div>
-      </div>
-    );
+    return (<div className="bg-white p-4 border border-gray-100 shadow-xl rounded-xl text-sm min-w-[220px] z-50"><div className="flex items-center justify-between border-b border-gray-100 pb-2 mb-2"><p className="font-bold text-gray-900 capitalize">{data.topic}</p><span className="text-xs text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded">Avg: {data.avgRating.toFixed(1)} ★</span></div><div className="space-y-2"><div className="flex justify-between items-center text-red-700"><span className="flex items-center gap-2 text-xs font-medium"><div className="w-2 h-2 rounded-full bg-red-500" /> Negative</span><span className="font-bold text-xs">{data.negPct}% <span className="text-gray-400 font-normal">({data.negCount})</span></span></div><div className="flex justify-between items-center text-amber-700"><span className="flex items-center gap-2 text-xs font-medium"><div className="w-2 h-2 rounded-full bg-amber-500" /> Neutral</span><span className="font-bold text-xs">{data.neuPct}% <span className="text-gray-400 font-normal">({data.neuCount})</span></span></div><div className="flex justify-between items-center text-green-700"><span className="flex items-center gap-2 text-xs font-medium"><div className="w-2 h-2 rounded-full bg-emerald-500" /> Positive</span><span className="font-bold text-xs">{data.posPct}% <span className="text-gray-400 font-normal">({data.posCount})</span></span></div></div><div className="mt-3 pt-2 border-t border-gray-100 flex justify-between text-gray-500 text-xs"><span>Total Mentions</span><span className="font-medium text-gray-900">{data.total}</span></div></div>);
   }
   return null;
 };
 
 export function CompanyAnalyticsView({ company, reviews, isPro, searchStats }: CompanyAnalyticsViewProps) {
 
-  // --- STATE ---
+  // ... (State & Calculations - unchanged) ...
   const [aiData, setAiData] = useState<{
     summary: string;
     suggestions: string[];
@@ -131,17 +78,14 @@ export function CompanyAnalyticsView({ company, reviews, isPro, searchStats }: C
 
   const [aiLoading, setAiLoading] = useState(true);
 
-  // --- CALCULATIONS ---
   const totalReviews = reviews.length;
   const positiveReviews = reviews.filter(r => r.starRating >= 4).length;
   const negativeReviews = reviews.filter(r => r.starRating <= 2).length;
   const nss = totalReviews > 0 ? Math.round(((positiveReviews - negativeReviews) / totalReviews) * 100) : 0;
   const currentScore = company.rating || 0;
 
-  // --- EFFECT: Generate AI Insights Only ---
   useEffect(() => {
     if (!isPro) return;
-
     const generateAi = async () => {
       const metricsData = {
         trustScore: currentScore,
@@ -151,22 +95,16 @@ export function CompanyAnalyticsView({ company, reviews, isPro, searchStats }: C
         ctr: Number(searchStats?.totals?.ctr) || 0,
         adValue: searchStats?.totals?.adSpend || "0.00"
       };
-
       if (reviews.length > 0) {
-        const aiResult = await generateCompanyInsight(
-          reviews,
-          metricsData,
-          searchStats?.topQueries || []
-        );
+        const aiResult = await generateCompanyInsight(reviews, metricsData, searchStats?.topQueries || []);
         if (aiResult) setAiData(aiResult);
       }
       setAiLoading(false);
     };
-
     generateAi();
   }, [reviews, isPro, company.id, searchStats]);
 
-  // --- CHART DATA PREP ---
+  // ... (Chart Data Prep - unchanged) ...
   const trendData = [];
   let previousScore = 0;
   for (let i = 5; i >= 0; i--) {
@@ -181,36 +119,19 @@ export function CompanyAnalyticsView({ company, reviews, isPro, searchStats }: C
     trendData.push({ month: monthLabel, score: monthlyAvg, reviews: monthlyReviews.length });
   }
 
-  // --- KEYWORD DATA PREP ---
+  // ... (Keyword Data Prep & Analysis - unchanged) ...
   const keywordMap: Record<string, { total: number; positive: number; negative: number; neutral: number; sumRating: number }> = {};
-
   reviews.forEach(r => {
     const rawKeywords = r.keywords || [];
-
     rawKeywords.forEach((entry: string) => {
       let topic = entry;
       let sentiment = 'neutral';
-
-      if (entry.includes(':')) {
-        const parts = entry.split(':');
-        topic = parts[0];
-        sentiment = parts[1];
-      } else {
-        topic = entry;
-        if (r.starRating >= 4) sentiment = 'positive';
-        else if (r.starRating <= 2) sentiment = 'negative';
-      }
-
-      if (!keywordMap[topic]) {
-        keywordMap[topic] = { total: 0, positive: 0, negative: 0, neutral: 0, sumRating: 0 };
-      }
-
+      if (entry.includes(':')) { const parts = entry.split(':'); topic = parts[0]; sentiment = parts[1]; }
+      else { topic = entry; if (r.starRating >= 4) sentiment = 'positive'; else if (r.starRating <= 2) sentiment = 'negative'; }
+      if (!keywordMap[topic]) { keywordMap[topic] = { total: 0, positive: 0, negative: 0, neutral: 0, sumRating: 0 }; }
       keywordMap[topic].total++;
       keywordMap[topic].sumRating += r.starRating;
-
-      if (sentiment === 'positive') keywordMap[topic].positive++;
-      else if (sentiment === 'negative') keywordMap[topic].negative++;
-      else keywordMap[topic].neutral++;
+      if (sentiment === 'positive') keywordMap[topic].positive++; else if (sentiment === 'negative') keywordMap[topic].negative++; else keywordMap[topic].neutral++;
     });
   });
 
@@ -218,60 +139,23 @@ export function CompanyAnalyticsView({ company, reviews, isPro, searchStats }: C
     const posPct = Math.round((data.positive / data.total) * 100);
     const negPct = Math.round((data.negative / data.total) * 100);
     const neuPct = Math.round((data.neutral / data.total) * 100);
-
-    return {
-      topic,
-      total: data.total,
-      posCount: data.positive,
-      neuCount: data.neutral,
-      negCount: data.negative,
-      posPct,
-      negPct,
-      neuPct,
-      avgRating: data.sumRating / data.total
-    };
+    return { topic, total: data.total, posCount: data.positive, neuCount: data.neutral, negCount: data.negative, posPct, negPct, neuPct, avgRating: data.sumRating / data.total };
   });
 
   const topKeywords = [...keywordAnalysis].sort((a, b) => b.total - a.total).slice(0, 6);
   const riskAlert = keywordAnalysis.filter(k => k.total >= 1 && k.negPct >= 20).sort((a, b) => b.negPct - a.negPct)[0];
 
-  // --- FILTERING ---
-  const latestPositive = [...reviews]
-    .filter(r => {
-      const keywords = r.keywords || [];
-      const hasSmartPositive = keywords.some((k: string) => k.toLowerCase().includes(':positive'));
-      const hasLegacyPositive = r.starRating >= 4 && keywords.some((k: string) => !k.includes(':'));
-      return hasSmartPositive || hasLegacyPositive;
-    })
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    .slice(0, 3);
-
-  const latestNegative = [...reviews]
-    .filter(r => {
-      const keywords = r.keywords || [];
-      const hasSmartNegative = keywords.some((k: string) => k.toLowerCase().includes(':negative'));
-      const hasLegacyNegative = r.starRating <= 2 && keywords.some((k: string) => !k.includes(':'));
-      return hasSmartNegative || hasLegacyNegative;
-    })
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    .slice(0, 3);
-
-  const latestNeutral = [...reviews]
-    .filter(r => {
-      const keywords = r.keywords || [];
-      const hasSmartNeutral = keywords.some((k: string) => k.toLowerCase().includes(':neutral'));
-      const hasLegacyNeutral = r.starRating === 3 && keywords.some((k: string) => !k.includes(':'));
-      return hasSmartNeutral || hasLegacyNeutral;
-    })
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    .slice(0, 3);
+  // ... (Filtering logic - unchanged) ...
+  const latestPositive = [...reviews].filter(r => { const keywords = r.keywords || []; const hasSmartPositive = keywords.some((k: string) => k.toLowerCase().includes(':positive')); const hasLegacyPositive = r.starRating >= 4 && keywords.some((k: string) => !k.includes(':')); return hasSmartPositive || hasLegacyPositive; }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 3);
+  const latestNegative = [...reviews].filter(r => { const keywords = r.keywords || []; const hasSmartNegative = keywords.some((k: string) => k.toLowerCase().includes(':negative')); const hasLegacyNegative = r.starRating <= 2 && keywords.some((k: string) => !k.includes(':')); return hasSmartNegative || hasLegacyNegative; }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 3);
+  const latestNeutral = [...reviews].filter(r => { const keywords = r.keywords || []; const hasSmartNeutral = keywords.some((k: string) => k.toLowerCase().includes(':neutral')); const hasLegacyNeutral = r.starRating === 3 && keywords.some((k: string) => !k.includes(':')); return hasSmartNeutral || hasLegacyNeutral; }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 3);
 
   return (
     <div className="space-y-8">
 
       {/* --- SECTION 1: KPI CARDS --- */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {/* ... (Existing KPI Cards) ... */}
+        {/* ... (Existing KPI Cards - unchanged) ... */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium flex items-center">TrustScore <InfoTooltip text="Score based on review ratings and recency." /></CardTitle>
@@ -341,15 +225,43 @@ export function CompanyAnalyticsView({ company, reviews, isPro, searchStats }: C
           {searchStats && (
             <div className="space-y-4">
               <div className="flex items-center gap-2"><Zap className="h-5 w-5 text-yellow-500 fill-yellow-500" /><h2 className="text-xl font-bold text-gray-900">Search & PPC Performance</h2></div>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <MetricCard title="Search Impressions" value={searchStats.totals.impressions} helperText="Appearances in search." icon={<Eye className="h-4 w-4 text-blue-500" />} />
-                <MetricCard title="Total Clicks" value={searchStats.totals.clicks} helperText="Clicks to your profile." icon={<MousePointerClick className="h-4 w-4 text-green-500" />} />
-                <MetricCard title="Click-Through Rate" value={`${searchStats.totals.ctr}%`} helperText="Percentage of clicks per impression." icon={<Zap className="h-4 w-4 text-yellow-500" />} />
-                <MetricCard title="Est. Ad Value" value={`$${searchStats.totals.adSpend}`} helperText="Monetary value of organic traffic." icon={<DollarSign className="h-4 w-4 text-purple-500" />} />
+
+              {/* ✅ UPDATED LAYOUT STARTS HERE */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                {/* 1. Left Column: 2x2 Grid for Main Stats */}
+                <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <MetricCard title="Search Impressions" value={searchStats.totals.impressions} helperText="Appearances in search." icon={<Eye className="h-4 w-4 text-blue-500" />} />
+                  <MetricCard title="Total Clicks" value={searchStats.totals.clicks} helperText="Clicks to your profile." icon={<MousePointerClick className="h-4 w-4 text-green-500" />} />
+                  <MetricCard title="Click-Through Rate" value={`${searchStats.totals.ctr}%`} helperText="Percentage of clicks per impression." icon={<Zap className="h-4 w-4 text-yellow-500" />} />
+                  <MetricCard title="Est. Ad Value" value={`$${searchStats.totals.adSpend}`} helperText="Monetary value of organic traffic." icon={<DollarSign className="h-4 w-4 text-purple-500" />} />
+                </div>
+
+                {/* 2. Right Column: Stacked Conversion Stats */}
+                <div className="lg:col-span-1 flex flex-col gap-4">
+                  <div className="flex items-center gap-2">
+                    <Users className="h-5 w-5 text-orange-500" />
+                    <h2 className="text-xl font-bold text-gray-900">Lead Generation</h2>
+                  </div>
+                  <MetricCard
+                    title="Calls Generated"
+                    value={searchStats.totals.calls || 0}
+                    helperText="CTA Button clicks"
+                    icon={<Phone className="h-4 w-4 text-purple-500" />}
+                  />
+                  <MetricCard
+                    title="Leads Generated"
+                    value={searchStats.totals.leads || 0}
+                    helperText="Quote requests"
+                    icon={<FileText className="h-4 w-4 text-orange-500" />}
+                  />
+                </div>
+
               </div>
-              
+              {/* ✅ UPDATED LAYOUT ENDS HERE */}
+
               {/* Search Query Table (Kept as is) */}
-               <Card>
+              <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-base">
                     <Search className="h-4 w-4 text-blue-500" />
@@ -361,7 +273,7 @@ export function CompanyAnalyticsView({ company, reviews, isPro, searchStats }: C
                     <table className="w-full text-sm text-left">
                       <thead className="bg-gray-50 text-gray-500">
                         <tr>
-                          <th className="px-4 py-3 font-medium">Search Query / Filter</th>
+                          <th className="px-4 py-3 font-medium">Search Query / Location</th>
                           <th className="px-4 py-3 font-medium">User Region</th>
                           <th className="px-4 py-3 font-medium text-right">Impressions</th>
                           <th className="px-4 py-3 font-medium text-right">Clicks</th>
@@ -417,7 +329,7 @@ export function CompanyAnalyticsView({ company, reviews, isPro, searchStats }: C
             </div>
           )}
 
-          {/* AI Insights Summary Block */}
+          {/* AI Insights Summary Block (Kept as is) */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 bg-gradient-to-r from-[#000032] to-[#000050] rounded-xl p-6 text-white shadow-lg relative overflow-hidden min-h-[180px]">
               <div className="absolute top-0 right-0 p-6 opacity-10"><Sparkles className="h-32 w-32" /></div>
@@ -453,7 +365,7 @@ export function CompanyAnalyticsView({ company, reviews, isPro, searchStats }: C
                 <Card><CardHeader><CardTitle>Review Volume</CardTitle></CardHeader><CardContent className="h-[300px]"><ResponsiveContainer width="100%" height="100%"><BarChart data={trendData}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="month" /><YAxis /><Tooltip /><Bar dataKey="reviews" fill="#000032" radius={[4, 4, 0, 0]} /></BarChart></ResponsiveContainer></CardContent></Card>
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                 <div className="lg:col-span-2 bg-purple-50 p-6 rounded-xl border border-purple-100 relative overflow-hidden flex flex-col justify-center">
+                <div className="lg:col-span-2 bg-purple-50 p-6 rounded-xl border border-purple-100 relative overflow-hidden flex flex-col justify-center">
                   <div className="flex items-center gap-2 mb-3 text-purple-800 font-bold z-10">
                     <Sparkles className="h-5 w-5" /> AI Trend Insight
                   </div>
@@ -532,7 +444,7 @@ export function CompanyAnalyticsView({ company, reviews, isPro, searchStats }: C
 
               {/* 3. Review Grids (Positive / Neutral / Negative) */}
               <div className="space-y-8 mt-6">
-                
+
                 {/* Positive Grid */}
                 <div>
                   <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-4">
@@ -665,9 +577,9 @@ export function CompanyAnalyticsView({ company, reviews, isPro, searchStats }: C
 
             {/* Comparison Tab */}
             <TabsContent value="comparison" className="space-y-6">
-              <ComparisonTab 
-                companyId={company.id} 
-                companyName={company.name} 
+              <ComparisonTab
+                companyId={company.id}
+                companyName={company.name}
               />
             </TabsContent>
 

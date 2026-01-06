@@ -19,9 +19,8 @@ import {
   Building2, 
   Tag, 
   Layers, 
-  Map, 
-  ShieldCheck,   // ✅ Import ShieldCheck
-  AlertTriangle  // ✅ Import AlertTriangle
+  ShieldCheck, 
+  AlertTriangle 
 } from "lucide-react";
 import Image from "next/image";
 
@@ -30,8 +29,11 @@ interface CompanyDetailsModalProps {
 }
 
 export function CompanyDetailsModal({ company }: CompanyDetailsModalProps) {
-  // Check verification status
   const isDomainVerified = !!company.domainVerified;
+
+  // Helper to get contact info safely (handles nested objects or flat structure)
+  const email = company.contact?.email || company.contactEmail || company.email;
+  const phone = company.contact?.phone || company.phone;
 
   return (
     <Dialog>
@@ -90,7 +92,7 @@ export function CompanyDetailsModal({ company }: CompanyDetailsModalProps) {
           {/* 2. Detailed Info Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-sm">
              
-             {/* ✅ NEW: DOMAIN VERIFICATION STATUS */}
+             {/* Domain Verification */}
              <div className="col-span-1 sm:col-span-2 bg-gray-50/50 p-4 rounded-lg border border-gray-100">
                 <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Domain Verification</h4>
                 {isDomainVerified ? (
@@ -118,7 +120,25 @@ export function CompanyDetailsModal({ company }: CompanyDetailsModalProps) {
                    </div>
                 )}
              </div>
-             
+
+             <div className="col-span-1 sm:col-span-2 border-t border-gray-100 my-1"></div>
+
+             {/* ✅ NEW: CONTACT INFO SECTION */}
+             <div>
+                <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Email</h4>
+                <div className="flex items-center gap-2 text-gray-900 font-medium">
+                   <Mail className="h-4 w-4 text-gray-400" />
+                   {email || <span className="text-gray-400 italic">Not provided</span>}
+                </div>
+             </div>
+             <div>
+                <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Phone</h4>
+                <div className="flex items-center gap-2 text-gray-900 font-medium">
+                   <Phone className="h-4 w-4 text-gray-400" />
+                   {phone || <span className="text-gray-400 italic">Not provided</span>}
+                </div>
+             </div>
+
              <div className="col-span-1 sm:col-span-2 border-t border-gray-100 my-1"></div>
 
              {/* Category Info */}
@@ -165,7 +185,7 @@ export function CompanyDetailsModal({ company }: CompanyDetailsModalProps) {
              </div>
           </div>
 
-          {/* 3. Description (Same as before) */}
+          {/* 3. Description */}
           {company.briefIntroduction && (
             <div>
                <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">About</h4>
@@ -175,7 +195,7 @@ export function CompanyDetailsModal({ company }: CompanyDetailsModalProps) {
             </div>
           )}
 
-          {/* 4. Keywords & Gallery (Same as before) */}
+          {/* 4. Keywords & Gallery */}
           {company.keywords && company.keywords.length > 0 && (
             <div>
                <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">

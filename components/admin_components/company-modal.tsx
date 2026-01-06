@@ -24,7 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Upload, Plus, Edit, ImagePlus, X, MapPin } from "lucide-react";
+import { Loader2, Upload, Plus, Edit, ImagePlus, X, MapPin, Mail, Phone } from "lucide-react";
 import Image from "next/image";
 import { toast } from "sonner";
 import { useGeoLocation, GeoItem } from "@/lib/hooks/use-geo-location";
@@ -33,7 +33,6 @@ interface SubCategoryOption { id: string; name: string; }
 interface CategoryOption { id: string; name: string; subCategories: SubCategoryOption[]; }
 interface GalleryItem { id: string; url: string; file?: File; isExisting: boolean; }
 
-// ✅ 1. ADDED userRole to Interface
 interface CompanyModalProps { 
   categories: CategoryOption[]; 
   company?: any; 
@@ -49,7 +48,6 @@ function SubmitButton({ isEdit }: { isEdit: boolean }) {
   );
 }
 
-// ✅ 2. ADDED userRole to Props Destructuring
 export function CompanyModal({ categories, company, userRole }: CompanyModalProps) {
   const [open, setOpen] = useState(false);
   const [state, formAction] = useActionState(upsertCompany, null);
@@ -57,33 +55,37 @@ export function CompanyModal({ categories, company, userRole }: CompanyModalProp
 
   const { fetchCountries, fetchStates, fetchCities, loading: geoLoading } = useGeoLocation();
 
-  // --- LOCATION STATE ---
+  // --- LOCATION LISTS ---
   const [countriesList, setCountriesList] = useState<GeoItem[]>([]);
   const [statesList, setStatesList] = useState<GeoItem[]>([]);
   const [citiesList, setCitiesList] = useState<GeoItem[]>([]);
 
-  const [selectedCountryId, setSelectedCountryId] = useState<string>("");
-  const [selectedStateId, setSelectedStateId] = useState<string>("");
+  // --- SELECTION STATE ---
+  // We initialize these to undefined so the Select component stays in "placeholder mode" initially
+  const [selectedCountryId, setSelectedCountryId] = useState<string | undefined>(undefined);
+  const [selectedStateId, setSelectedStateId] = useState<string | undefined>(undefined);
+  const [selectedCityName, setSelectedCityName] = useState<string | undefined>(undefined);
 
-  // Initialize names with existing company data
-  const [selectedCountryName, setSelectedCountryName] = useState<string>(company?.country || "");
-  const [selectedStateName, setSelectedStateName] = useState<string>(company?.state || "");
-  const [selectedCityName, setSelectedCityName] = useState<string>(company?.city || "");
-
-  const [logoPreview, setLogoPreview] = useState<string | null>(company?.logoImage || null);
+  // --- BASIC FIELDS ---
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
-  const [isClaimed, setIsClaimed] = useState(company?.claimed || false);
-  const [isDomainVerified, setIsDomainVerified] = useState(!!company?.domainVerified);
-  const [keywords, setKeywords] = useState<string[]>(company?.keywords || []);
+  const [isClaimed, setIsClaimed] = useState(false);
+  const [isDomainVerified, setIsDomainVerified] = useState(false);
+  const [keywords, setKeywords] = useState<string[]>([]);
   const [keywordInput, setKeywordInput] = useState("");
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string>(company?.categoryId || "");
-  const [selectedSubCategoryId, setSelectedSubCategoryId] = useState<string>(company?.subCategoryId || "");
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
+  const [selectedSubCategoryId, setSelectedSubCategoryId] = useState<string>("");
   const [galleryItems, setGalleryItems] = useState<GalleryItem[]>([]);
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
-  // --- INITIALIZATION ---
+  // Defaults for text inputs
+  const defaultEmail = company?.contactEmail || company?.email || company?.contact?.email || "";
+  const defaultPhone = company?.phone || company?.contact?.phone || "";
+
+  // --- INITIALIZATION (Run once when modal opens) ---
   useEffect(() => {
     if (open) {
+      // 1. Reset Basic Fields from Prop
       setLogoPreview(company?.logoImage || null);
       setLogoFile(null);
       setIsClaimed(company?.claimed || false);
@@ -92,12 +94,11 @@ export function CompanyModal({ categories, company, userRole }: CompanyModalProp
       setKeywordInput("");
       setSelectedCategoryId(company?.categoryId || "");
       setSelectedSubCategoryId(company?.subCategoryId || "");
+      
+      // Initialize city directly as it's just a string, doesn't need ID lookup immediately
+      setSelectedCityName(company?.city || undefined); 
 
-      // Reset location names
-      setSelectedCountryName(company?.country || "");
-      setSelectedStateName(company?.state || "");
-      setSelectedCityName(company?.city || "");
-
+      // Reset Gallery
       const existingImages = (company?.otherImages || []).map((url: string, index: number) => ({
         id: `existing-${index}`,
         url: url,
@@ -105,51 +106,61 @@ export function CompanyModal({ categories, company, userRole }: CompanyModalProp
       }));
       setGalleryItems(existingImages);
 
-      // Async: Hydrate the dropdown lists and IDs
-      const initLocation = async () => {
-        const cList = await fetchCountries();
-        setCountriesList(cList);
+      // 2. HYDRATE LOCATION (Chain the calls safely)
+      const hydrateLocation = async () => {
+        try {
+          // A. Fetch Countries
+          const cList = await fetchCountries();
+          setCountriesList(cList);
 
-        if (company?.country) {
-          const matchedCountry = cList.find(c => c.name === company.country);
-          if (matchedCountry) {
-            const cId = matchedCountry.geonameId.toString();
-            setSelectedCountryId(cId);
+          // If we have an existing country, try to find its ID
+          if (company?.country) {
+            const normalize = (s: string) => s.trim().toLowerCase();
+            const targetCountry = normalize(company.country);
+            const matchedCountry = cList.find(c => normalize(c.name) === targetCountry);
 
-            // Load States
-            const sList = await fetchStates(Number(cId));
-            setStatesList(sList);
+            if (matchedCountry) {
+              const cId = matchedCountry.geonameId.toString();
+              setSelectedCountryId(cId);
 
-           if (company?.state) {
-              const matchedState = sList.find(s => s.name === company.state);
-              if (matchedState) {
-                const sId = matchedState.geonameId.toString();
-                setSelectedStateId(sId);
-                
-                if (matchedCountry.isoCode && matchedState.adminCode) {
-                    const cities = await fetchCities(matchedCountry.isoCode, matchedState.adminCode, matchedState.name);
-                    setCitiesList(cities);
+              // B. Fetch States for this Country
+              const sList = await fetchStates(Number(cId));
+              setStatesList(sList);
+
+              // If we have an existing state, try to find its ID
+              if (company?.state) {
+                const targetState = normalize(company.state);
+                const matchedState = sList.find(s => normalize(s.name) === targetState);
+
+                if (matchedState) {
+                  const sId = matchedState.geonameId.toString();
+                  setSelectedStateId(sId);
+
+                  // C. Fetch Cities (Just to populate the list)
+                  if (matchedCountry.isoCode && matchedState.adminCode) {
+                    const ctyList = await fetchCities(matchedCountry.isoCode, matchedState.adminCode, matchedState.name);
+                    setCitiesList(ctyList);
+                  }
                 }
               }
             }
           }
+        } catch (error) {
+          console.error("Location hydration failed", error);
         }
       };
-      initLocation();
-    }
-  }, [open, company, fetchCountries, fetchStates, fetchCities]);
 
-  // --- HANDLERS ---
+      hydrateLocation();
+    }
+  }, [open, company]); // Only re-run if modal opens or company prop changes totally
+
+  // --- EVENT HANDLERS ---
   const handleCountryChange = async (valId: string) => {
     setSelectedCountryId(valId);
-    const cObj = countriesList.find(c => c.geonameId.toString() === valId);
-    setSelectedCountryName(cObj?.name || "");
-
-    // Reset children
-    setSelectedStateId("");
-    setSelectedStateName("");
+    // Reset lower fields
+    setSelectedStateId(undefined);
     setStatesList([]);
-    setSelectedCityName("");
+    setSelectedCityName(undefined);
     setCitiesList([]);
 
     // Fetch States
@@ -159,14 +170,11 @@ export function CompanyModal({ categories, company, userRole }: CompanyModalProp
 
   const handleStateChange = async (valId: string) => {
     setSelectedStateId(valId);
-    
-    const sObj = statesList.find(s => s.geonameId.toString() === valId);
-    setSelectedStateName(sObj?.name || "");
+    setSelectedCityName(undefined);
+    setCitiesList([]);
 
     const cObj = countriesList.find(c => c.geonameId.toString() === selectedCountryId);
-
-    setSelectedCityName("");
-    setCitiesList([]);
+    const sObj = statesList.find(s => s.geonameId.toString() === valId);
 
     if (cObj?.isoCode && sObj?.adminCode) {
       const cList = await fetchCities(cObj.isoCode, sObj.adminCode, sObj.name);
@@ -178,79 +186,56 @@ export function CompanyModal({ categories, company, userRole }: CompanyModalProp
     setSelectedCityName(val);
   };
 
-  useEffect(() => {
-    if (state?.success) {
-      setOpen(false);
-      toast.success("Company saved successfully");
-    } else if (state?.error) {
-      toast.error(state.error);
+  // ... (Other handlers unchanged) ...
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) { setLogoFile(file); setLogoPreview(URL.createObjectURL(file)); }
+  };
+  const handleGalleryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const newFiles = Array.from(e.target.files);
+      const newItems: GalleryItem[] = newFiles.map((file, index) => ({
+        id: `new-${Date.now()}-${index}`, url: URL.createObjectURL(file), file: file, isExisting: false
+      }));
+      setGalleryItems(prev => [...prev, ...newItems]);
     }
-  }, [state]);
-
+  };
+  const removeGalleryImage = (idToRemove: string) => { setGalleryItems(prev => prev.filter(item => item.id !== idToRemove)); };
+  const handleAddKeyword = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      const newTag = keywordInput.trim().toLowerCase();
+      if (newTag && !keywords.includes(newTag)) { setKeywords(prev => [...prev, newTag]); }
+      setKeywordInput("");
+    }
+  };
+  const removeKeyword = (tagToRemove: string) => { setKeywords(prev => prev.filter(tag => tag !== tagToRemove)); };
+  const handleCategoryChange = (val: string) => { setSelectedCategoryId(val); setSelectedSubCategoryId(""); };
   const availableSubCategories = useMemo(() => {
     const cat = categories.find(c => c.id === selectedCategoryId);
     return cat ? cat.subCategories : [];
   }, [selectedCategoryId, categories]);
 
-  const handleCategoryChange = (val: string) => {
-    setSelectedCategoryId(val);
-    setSelectedSubCategoryId("");
-  };
+  useEffect(() => {
+    if (state?.success) { setOpen(false); toast.success("Company saved successfully"); } 
+    else if (state?.error) { toast.error(state.error); }
+  }, [state]);
 
-  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setLogoFile(file);
-      setLogoPreview(URL.createObjectURL(file));
-    }
-  };
-
-  const handleGalleryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const newFiles = Array.from(e.target.files);
-      const newItems: GalleryItem[] = newFiles.map((file, index) => ({
-        id: `new-${Date.now()}-${index}`,
-        url: URL.createObjectURL(file),
-        file: file,
-        isExisting: false
-      }));
-      setGalleryItems(prev => [...prev, ...newItems]);
-    }
-  };
-
-  const removeGalleryImage = (idToRemove: string) => {
-    setGalleryItems(prev => prev.filter(item => item.id !== idToRemove));
-  };
-
-  const handleAddKeyword = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' || e.key === ',') {
-      e.preventDefault();
-      const newTag = keywordInput.trim().toLowerCase();
-      if (newTag && !keywords.includes(newTag)) {
-        setKeywords(prev => [...prev, newTag]);
-      }
-      setKeywordInput("");
-    }
-  };
-
-  const removeKeyword = (tagToRemove: string) => {
-    setKeywords(prev => prev.filter(tag => tag !== tagToRemove));
-  };
+  // Find names for hidden inputs
+  const currentCountryName = countriesList.find(c => c.geonameId.toString() === selectedCountryId)?.name || company?.country || "";
+  const currentStateName = statesList.find(s => s.geonameId.toString() === selectedStateId)?.name || company?.state || "";
 
   const handleSubmit = (formData: FormData) => {
     const newFilesToUpload = galleryItems.filter(item => !item.isExisting && item.file);
     const existingUrlsToKeep = galleryItems.filter(item => item.isExisting).map(item => item.url);
     newFilesToUpload.forEach(item => { if (item.file) formData.append('otherImages', item.file); });
     formData.set('retainedImages', JSON.stringify(existingUrlsToKeep));
-
     if (logoFile) formData.set('logo', logoFile);
     if (isClaimed) formData.set('claimed', 'on'); else formData.delete('claimed');
     if (isDomainVerified) formData.set('domainVerified', 'on'); else formData.delete('domainVerified');
-
     formData.set('keywords', keywords.join(','));
     if (selectedCategoryId) formData.set('categoryId', selectedCategoryId);
     if (selectedSubCategoryId) formData.set('subCategoryId', selectedSubCategoryId);
-
     formAction(formData);
   };
 
@@ -272,12 +257,14 @@ export function CompanyModal({ categories, company, userRole }: CompanyModalProp
           <DialogTitle>{isEdit ? `Edit ${company.name}` : "Add New Company"}</DialogTitle>
         </DialogHeader>
 
-        <form action={handleSubmit} className="space-y-6 py-4">
+        {/* Using key to force re-render if company changes */}
+        <form key={company?.id} action={handleSubmit} className="space-y-6 py-4">
           {isEdit && <input type="hidden" name="companyId" value={company.id} />}
 
-          <input type="hidden" name="country" value={selectedCountryName} />
-          <input type="hidden" name="state" value={selectedStateName} />
-          <input type="hidden" name="city" value={selectedCityName} />
+          {/* Hidden inputs to send actual names to server */}
+          <input type="hidden" name="country" value={currentCountryName} />
+          <input type="hidden" name="state" value={currentStateName} />
+          <input type="hidden" name="city" value={selectedCityName || company?.city || ""} />
 
           {/* Logo & Basic Info */}
           <div className="space-y-2">
@@ -300,7 +287,7 @@ export function CompanyModal({ categories, company, userRole }: CompanyModalProp
             </div>
             <div className="space-y-2">
               <Label htmlFor="website">Website</Label>
-              <Input id="website" name="website" defaultValue={company?.websiteUrl} />
+              <Input id="website" name="website" defaultValue={company?.websiteUrl} placeholder="e.g. example.com" />
             </div>
           </div>
 
@@ -341,6 +328,17 @@ export function CompanyModal({ categories, company, userRole }: CompanyModalProp
             </Select>
           </div>
 
+          <div className="grid grid-cols-2 gap-4 bg-blue-50/50 p-4 rounded-lg border border-blue-100">
+            <div className="space-y-2">
+              <Label htmlFor="contactEmail" className="flex items-center gap-2"><Mail className="h-3 w-3 text-blue-600" /> Contact Email</Label>
+              <Input id="contactEmail" name="contactEmail" type="email" defaultValue={defaultEmail} placeholder="info@company.com" className="bg-white"/>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="phone" className="flex items-center gap-2"><Phone className="h-3 w-3 text-blue-600" /> Phone Number</Label>
+              <Input id="phone" name="phone" type="tel" defaultValue={defaultPhone} placeholder="+1 (555) 000-0000" className="bg-white"/>
+            </div>
+          </div>
+
           {/* Location Details */}
           <div className="space-y-3 bg-gray-50 p-4 rounded-lg border border-gray-100">
             <Label className="text-blue-600 font-semibold flex items-center gap-2">
@@ -348,13 +346,15 @@ export function CompanyModal({ categories, company, userRole }: CompanyModalProp
             </Label>
 
             <div className="grid grid-cols-2 gap-4">
-
-              {/* Country */}
               <div className="space-y-1">
                 <Label className="text-xs text-gray-500">Country</Label>
-                <Select value={selectedCountryId} onValueChange={handleCountryChange}>
+                {/* ✅ FIX: Use 'value={selectedCountryId || ""}' 
+                   If ID is missing (loading), it shows placeholder.
+                   The placeholder explicitly falls back to company.country text.
+                */}
+                <Select value={selectedCountryId || ""} onValueChange={handleCountryChange}>
                   <SelectTrigger>
-                    <SelectValue placeholder={selectedCountryName || "Select Country"} />
+                    <SelectValue placeholder={company?.country || "Select Country"} />
                   </SelectTrigger>
                   <SelectContent>
                     {countriesList.map((c) => (
@@ -364,12 +364,11 @@ export function CompanyModal({ categories, company, userRole }: CompanyModalProp
                 </Select>
               </div>
 
-              {/* State */}
               <div className="space-y-1">
                 <Label className="text-xs text-gray-500">State / Province</Label>
-                <Select value={selectedStateId} onValueChange={handleStateChange} disabled={!selectedCountryId}>
+                <Select value={selectedStateId || ""} onValueChange={handleStateChange} disabled={!selectedCountryId}>
                   <SelectTrigger>
-                    <SelectValue placeholder={selectedStateName || "Select State"} />
+                    <SelectValue placeholder={company?.state || "Select State"} />
                   </SelectTrigger>
                   <SelectContent>
                     {statesList.map((s) => (
@@ -379,35 +378,18 @@ export function CompanyModal({ categories, company, userRole }: CompanyModalProp
                 </Select>
               </div>
 
-              {/* City */}
               <div className="space-y-1">
                 <Label className="text-xs text-gray-500">City / Area</Label>
-                <Select value={selectedCityName} onValueChange={handleCityChange} disabled={!selectedStateId}>
+                <Select value={selectedCityName || ""} onValueChange={handleCityChange} disabled={!selectedStateId}>
                   <SelectTrigger>
-                    <SelectValue placeholder={selectedCityName || "Select City"} />
+                    <SelectValue placeholder={company?.city || "Select City"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {citiesList.length === 0 ? (
-                      <SelectItem value="none" disabled>No cities found</SelectItem>
-                    ) : (
-                      Array.from(new Map(citiesList.map(city => [city.name, city])).values())
-                        .map((city) => {
-
-                          let displayName = city.name;
-                          if (selectedStateName === "Delhi" || selectedStateName === "NCT") {
-                            const genericNames = ["West", "North", "South", "East", "Central", "North West", "North East", "South West", "South East", "Shahdara"];
-                            if (genericNames.includes(city.name)) {
-                              displayName = `${city.name} Delhi`;
-                            }
-                          }
-
-                          return (
-                            <SelectItem key={city.geonameId} value={displayName}>
-                              {displayName}
-                            </SelectItem>
-                          );
-                        })
-                    )}
+                    {citiesList.length === 0 ? <SelectItem value="none" disabled>No cities found</SelectItem> : 
+                      Array.from(new Map(citiesList.map(city => [city.name, city])).values()).map((city) => (
+                        <SelectItem key={city.geonameId} value={city.name}>{city.name}</SelectItem>
+                      ))
+                    }
                   </SelectContent>
                 </Select>
               </div>
@@ -424,6 +406,7 @@ export function CompanyModal({ categories, company, userRole }: CompanyModalProp
             </div>
           </div>
 
+          {/* ... Rest of form ... */}
           <div className="space-y-2">
             <Label htmlFor="description">Description</Label>
             <Textarea id="description" name="description" defaultValue={company?.briefIntroduction} className="min-h-[100px]" />
@@ -433,9 +416,7 @@ export function CompanyModal({ categories, company, userRole }: CompanyModalProp
             <Label>Keywords (SEO)</Label>
             <div className="flex flex-wrap gap-2 p-3 border rounded-md bg-gray-50 min-h-[60px]">
               {keywords.map(tag => (
-                <Badge key={tag} variant="secondary" className="px-2 py-1 flex items-center gap-1 bg-white border-gray-200 text-gray-700">
-                  {tag} <button type="button" onClick={() => removeKeyword(tag)} className="hover:text-red-500 ml-1"><X className="h-3 w-3" /></button>
-                </Badge>
+                <Badge key={tag} variant="secondary" className="px-2 py-1 flex items-center gap-1 bg-white border-gray-200 text-gray-700">{tag} <button type="button" onClick={() => removeKeyword(tag)} className="hover:text-red-500 ml-1"><X className="h-3 w-3" /></button></Badge>
               ))}
               <input value={keywordInput} onChange={e => setKeywordInput(e.target.value)} onKeyDown={handleAddKeyword} placeholder="Type tag & hit Enter..." className="flex-1 bg-transparent border-none outline-none text-sm" />
             </div>
@@ -452,32 +433,19 @@ export function CompanyModal({ categories, company, userRole }: CompanyModalProp
                 </div>
               ))}
               {galleryItems.length < 6 && (
-                <label className="aspect-square flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-md cursor-pointer hover:bg-gray-50 hover:border-[#0ABED6]">
-                  <ImagePlus className="h-6 w-6 text-gray-400 mb-1" />
-                  <input ref={galleryInputRef} type="file" multiple accept="image/*" className="hidden" onChange={handleGalleryChange} />
-                </label>
+                <label className="aspect-square flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-md cursor-pointer hover:bg-gray-50 hover:border-[#0ABED6]"><ImagePlus className="h-6 w-6 text-gray-400 mb-1" /><input ref={galleryInputRef} type="file" multiple accept="image/*" className="hidden" onChange={handleGalleryChange} /></label>
               )}
             </div>
           </div>
 
-          {/* ✅ 3. RESTRICTED SECTION: Hidden for DATA_ENTRY role */}
           {userRole !== 'DATA_ENTRY' && (
             <div className="flex flex-col gap-3 border p-4 rounded-md bg-gray-50/50">
-              <div className="flex items-center space-x-2">
-                <Checkbox id="claimed" checked={isClaimed} onCheckedChange={(c) => setIsClaimed(c as boolean)} />
-                <Label htmlFor="claimed" className="text-sm font-medium">Business Claimed</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Checkbox id="domainVerified" checked={isDomainVerified} onCheckedChange={(c) => setIsDomainVerified(c as boolean)} />
-                <Label htmlFor="domainVerified" className="text-sm font-medium flex items-center gap-2">
-                  Domain Verified
-                </Label>
-              </div>
+              <div className="flex items-center space-x-2"><Checkbox id="claimed" checked={isClaimed} onCheckedChange={(c) => setIsClaimed(c as boolean)} /><Label htmlFor="claimed" className="text-sm font-medium">Business Claimed</Label></div>
+              <div className="flex items-center space-x-2"><Checkbox id="domainVerified" checked={isDomainVerified} onCheckedChange={(c) => setIsDomainVerified(c as boolean)} /><Label htmlFor="domainVerified" className="text-sm font-medium flex items-center gap-2">Domain Verified</Label></div>
             </div>
           )}
 
           {state?.error && <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">{state.error}</div>}
-
           <div className="pt-2"><SubmitButton isEdit={isEdit} /></div>
         </form>
       </DialogContent>

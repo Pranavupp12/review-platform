@@ -1,8 +1,7 @@
-// app/(admin-dashboard)/layout.tsx
 import React from 'react';
 import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
-import { AdminSidebar } from '@/components/admin_components/admin-sidebar';
+import { AdminSidebar } from '@/components/admin_components/admin-sidebar'; // Ensure path is correct
 
 export default async function AdminLayout({
   children,
@@ -10,12 +9,6 @@ export default async function AdminLayout({
   children: React.ReactNode;
 }) {
   const session = await auth();
-
-  // --- DEBUG LOGS ---
-  console.log("🛡️ ADMIN LAYOUT CHECK:");
-  console.log("   - User:", session?.user?.email);
-  // @ts-ignore
-  console.log("   - Role:", session?.user?.role);
 
   // 1. Check if Logged In
   if (!session?.user) {
@@ -26,14 +19,17 @@ export default async function AdminLayout({
   const userRole = session.user.role;
 
   // 2. ✅ REDIRECT DATA ENTRY STAFF
-  // If a data entry user tries to hit /admin, bounce them to their own dashboard
   if (userRole === 'DATA_ENTRY') {
-    console.log("🔀 Redirecting Data Entry Staff to correct dashboard...");
     redirect('/data-entry');
   }
 
-  // 3. ✅ STRICT ADMIN CHECK
-  // Now, only 'ADMIN' is allowed to stay in this layout
+  // 3. ✅ NEW: REDIRECT BLOG ENTRY STAFF
+  if (userRole === 'BLOG_ENTRY') {
+    redirect('/blog-entry');
+  }
+
+  // 4. ✅ STRICT ADMIN CHECK
+  // Only 'ADMIN' is allowed to stay in this layout
   if (userRole !== 'ADMIN') {
     console.log("⛔ ACCESS DENIED: User is not ADMIN. Redirecting...");
     redirect('/dashboard'); // Regular users go back to main site
@@ -43,7 +39,7 @@ export default async function AdminLayout({
     <div className="flex min-h-screen bg-gray-50">
       <div className="z-50">
          <AdminSidebar 
-            userRole="ADMIN" // We know it's ADMIN because of the check above
+            userRole="ADMIN" 
             userName={session.user.name || "Admin"} 
          />
       </div>

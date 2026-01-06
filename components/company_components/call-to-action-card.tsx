@@ -1,20 +1,35 @@
 "use client";
 
 import { useState } from "react";
-import { Phone } from "lucide-react";
+import { Phone, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { trackPhoneClick } from "@/lib/lead-actions"; // ✅ Import Action
 
 interface CallToActionCardProps {
   phoneNumber?: string;
+  companyId: string; // ✅ Add companyId prop
 }
 
-export function CallToActionCard({ phoneNumber }: CallToActionCardProps) {
+export function CallToActionCard({ phoneNumber, companyId }: CallToActionCardProps) {
   const [isRevealed, setIsRevealed] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   if (!phoneNumber) return null;
 
+  const handleReveal = async () => {
+    setLoading(true);
+    // Fire and forget tracking (don't block UI)
+    trackPhoneClick(companyId);
+    
+    // Simulate slight delay for effect/processing
+    setTimeout(() => {
+        setIsRevealed(true);
+        setLoading(false);
+    }, 300);
+  };
+
   return (
-    <div className="bg-white border border-gray-200 p-6 ">
+    <div className="bg-white border border-gray-200 p-6 rounded-none">
       <div className="flex items-center gap-3 mb-4">
         <div className="h-10 w-10 bg-[#0ABED6]/20 rounded-full flex items-center justify-center">
           <Phone className="h-5 w-5 text-[#0ABED6]" />
@@ -28,9 +43,10 @@ export function CallToActionCard({ phoneNumber }: CallToActionCardProps) {
       {!isRevealed ? (
         <Button 
           className="w-full bg-[#0ABED6] hover:bg-[#0ABED6]/80 text-white font-semibold"
-          onClick={() => setIsRevealed(true)}
+          onClick={handleReveal}
+          disabled={loading}
         >
-          Call Now
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Call Now"}
         </Button>
       ) : (
         <div className="bg-gray-50 border border-gray-200 rounded-md p-3 text-center animate-in fade-in duration-300">

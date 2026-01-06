@@ -67,24 +67,25 @@ const staggerVariants = {
   },
 };
 
+// ✅ UPDATED LINKS: Defined separate access for DATA_ENTRY and BLOG_ENTRY
 const ADMIN_LINKS = [
   { 
     name: "Overview", 
-    href: "/admin", // Will become /data-entry for staff
+    href: "/admin", 
     icon: LayoutDashboard,
-    roles: ["ADMIN", "DATA_ENTRY"] // Added DATA_ENTRY here so they see a "Home" button
+    roles: ["ADMIN", "DATA_ENTRY", "BLOG_ENTRY"] // All roles see dashboard
   },
   { 
     name: "Companies", 
     href: "/admin/companies", 
     icon: Building2, 
-    roles: ["ADMIN", "DATA_ENTRY"] 
+    roles: ["ADMIN", "DATA_ENTRY"] // Only Data Entry & Admin
   },
   { 
     name: "Blog Management", 
     href: "/admin/blogs", 
     icon: Newspaper,
-    roles: ["ADMIN", "DATA_ENTRY"] 
+    roles: ["ADMIN", "BLOG_ENTRY"] // Only Blog Entry & Admin
   },
   { 
     name: "Manage Staff", 
@@ -129,11 +130,11 @@ const ADMIN_LINKS = [
     roles: ["ADMIN"]
   },
   { 
-  name: "Data Approval", 
-  href: "/admin/data-approval", 
-  icon: ShieldCheck, 
-  roles: ["ADMIN"] 
-},
+    name: "Data Approval", 
+    href: "/admin/data-approval", 
+    icon: ShieldCheck, 
+    roles: ["ADMIN"] 
+  },
 ];
 
 interface AdminSidebarProps {
@@ -145,7 +146,16 @@ export function AdminSidebar({ userRole = "DATA_ENTRY", userName = "Admin" }: Ad
   const [isCollapsed, setIsCollapsed] = useState(true);
   const pathname = usePathname();
 
+  // Filter links based on role
   const visibleLinks = ADMIN_LINKS.filter(link => link.roles.includes(userRole));
+
+  // Helper to determine display role label
+  const getRoleLabel = (role: string) => {
+    if (role === "ADMIN") return "Super Admin";
+    if (role === "DATA_ENTRY") return "Data Specialist";
+    if (role === "BLOG_ENTRY") return "Content Writer";
+    return "Staff Member";
+  };
 
   return (
     <motion.div
@@ -190,7 +200,7 @@ export function AdminSidebar({ userRole = "DATA_ENTRY", userName = "Admin" }: Ad
                             <div className="flex flex-col items-start text-left">
                               <p className="text-sm font-bold text-white truncate max-w-[110px]">{userName}</p>
                               <p className="text-[10px] text-gray-500">
-                                {userRole === "ADMIN" ? "Super Admin" : "Data Staff"}
+                                {getRoleLabel(userRole)}
                               </p>
                             </div>
                             <ChevronsUpDown className="ml-auto h-4 w-4 text-gray-500" />
@@ -216,14 +226,18 @@ export function AdminSidebar({ userRole = "DATA_ENTRY", userName = "Admin" }: Ad
               <div className="flex grow flex-col gap-2 px-2">
                 {visibleLinks.map((link) => {
                   
-                  // ✅ FIX: DYNAMICALLY UPDATE HREF FOR DATA ENTRY
+                  // ✅ FIX: DYNAMIC HREF REWRITING
                   let href = link.href;
+
                   if (userRole === 'DATA_ENTRY') {
-                    // Replace '/admin' with '/data-entry'
+                    // Rewrite /admin/companies -> /data-entry/companies
                     href = href.replace('/admin', '/data-entry');
-                    
-                    // Special case: if it is just '/data-entry' (dashboard home)
-                    if (href === '/data-entry') href = '/data-entry'; 
+                    if (href === '/data-entry') href = '/data-entry'; // Handle dashboard root
+                  } 
+                  else if (userRole === 'BLOG_ENTRY') {
+                    // Rewrite /admin/blogs -> /blog-entry/blogs
+                    href = href.replace('/admin', '/blog-entry');
+                    if (href === '/blog-entry') href = '/blog-entry'; // Handle dashboard root
                   }
 
                   const isActive = pathname === href;
@@ -250,7 +264,7 @@ export function AdminSidebar({ userRole = "DATA_ENTRY", userName = "Admin" }: Ad
                 })}
               </div>
 
-              {/* Bottom Settings Link */}
+              {/* Bottom Settings Link (Only for Admin) */}
               {userRole === "ADMIN" && (
                 <div className="p-2 border-t border-gray-800 mt-auto">
                   <Link

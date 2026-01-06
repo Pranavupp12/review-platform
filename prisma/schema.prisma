@@ -19,6 +19,7 @@ enum Role {
   ADMIN
   BUSINESS
   DATA_ENTRY
+  BLOG_ENTRY
 }
 
 enum CompanyType {
@@ -97,6 +98,7 @@ model User {
   company       Company?  @relation(fields: [companyId], references: [id])
   claims        BusinessClaim[]
   pendingChanges PendingChange[]
+  leadsSent      Lead[]
   
   createdAt     DateTime?  @default(now())
   updatedAt     DateTime?  @updatedAt
@@ -141,6 +143,7 @@ model Company {
   emailUsageResetDate  DateTime? @default(now())
   isFrozen          Boolean   @default(false)
   claimedAt         DateTime?
+  leads             Lead[]
 
   domainVerified       DateTime?  
   domainVerifyToken    String?    
@@ -328,13 +331,15 @@ model CompanyAnalytics {
   trustScore     Float   
   reviewCount    Int
   
-  nss            Int      @default(0) // Net Sentiment Score (-100 to 100)
+  nss            Int      @default(0) 
   profileViews   Int      @default(0)
-  clickThroughs  Int      @default(0) // Website clicks
+  clickThroughs  Int      @default(0) 
+  leadsGenerated Int      @default(0)
+  callsGenerated Int      @default(0)
   
   company        Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   
-  @@index([companyId, date])
+  @@unique([companyId, date])
 }
 
 model InviteToken {
@@ -440,4 +445,23 @@ model PendingChange {
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model Lead {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  
+  companyId   String   @db.ObjectId
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  userName    String
+  userEmail   String
+  message     String
+  
+  userId      String?  @db.ObjectId
+  user        User?    @relation(fields: [userId], references: [id])
+
+  source      String   @default("PROFILE_QUOTE") 
+  createdAt   DateTime @default(now())
+
+  @@index([companyId])
 }

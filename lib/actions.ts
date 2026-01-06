@@ -558,11 +558,10 @@ export async function adminDeleteCompany(companyId: string) {
   }
 }
 
-// --- 12. ADMIN: CREATE/UPDATE COMPANY ---
+
 export async function upsertCompany(prevState: any, formData: FormData) {
   const session = await auth();
   
-  // ✅ 1. CHANGE: Allow both ADMIN and DATA_ENTRY
   // @ts-ignore
   const userRole = session?.user?.role;
   if (userRole !== 'ADMIN' && userRole !== 'DATA_ENTRY') {
@@ -572,66 +571,95 @@ export async function upsertCompany(prevState: any, formData: FormData) {
   const userId = session?.user?.id;
 
   const companyId = formData.get('companyId') as string;
-  const name = formData.get('name') as string;
-  const website = formData.get('website') as string;
-  const categoryId = formData.get('categoryId') as string;
-  
-  // ✅ EXTRACT SUB-CATEGORY
-  const subCategoryId = formData.get('subCategoryId') as string;
 
-  const description = formData.get('description') as string;
-  const city = formData.get('city') as string;
-  const country = formData.get('country') as string;
-  const state = formData.get('state') as string;
-  const subCity = formData.get('subCity') as string;
-  const address = formData.get('address') as string;
-  const companyType = formData.get('companyType') as 'SERVICE' | 'PRODUCT'; 
-  const claimed = formData.get('claimed') === 'on'; 
+  // ✅ 1. FETCH EXISTING DATA (CRUCIAL STEP)
+  // We need this to fallback to old values if the form doesn't send them.
+  let existingCompany: any = null;
+  if (companyId) {
+    existingCompany = await prisma.company.findUnique({ where: { id: companyId } });
+    if (!existingCompany) return { error: "Company not found." };
+  }
+
+  // ✅ 2. HELPER: Get Value Safe
+  // Logic: If the form has the key, use it. If not, KEEP the database value.
+  const getVal = (key: string) => {
+    if (formData.has(key)) return formData.get(key) as string;
+    // If field is missing from form, return existing DB value (or empty string if new)
+    return existingCompany ? existingCompany[key] : "";
+  };
+
+  // --- EXTRACT BASIC FIELDS ---
+  const name = getVal('name');
+  const website = getVal('websiteUrl') || getVal('website'); 
+  const categoryId = getVal('categoryId');
+  const subCategoryId = getVal('subCategoryId');
+  const description = getVal('briefIntroduction') || getVal('description'); 
+  
+  // --- LOCATION FIELDS (Fixes "City/Country Changed" issue) ---
+  const city = getVal('city');
+  const country = getVal('country');
+  const state = getVal('state');
+  const subCity = getVal('subCity');
+  const address = getVal('address');
+  
+  const companyType = getVal('companyType') as 'SERVICE' | 'PRODUCT'; 
+  
+  // --- RESTRICTED FIELDS ---
+  // If user is ADMIN, trust the form. If DATA_ENTRY, keep existing values.
+  let claimed = existingCompany?.claimed || false;
+  let domainVerified = existingCompany?.domainVerified || null;
+
+  if (userRole === 'ADMIN') {
+      if (formData.has('claimed')) claimed = formData.get('claimed') === 'on';
+      if (formData.has('domainVerified')) {
+          domainVerified = formData.get('domainVerified') === 'on' ? new Date() : null;
+      }
+  }
+
+  // --- KEYWORDS ---
   const keywordsInput = formData.get('keywords') as string;
-  
-  // ✅ HANDLE DOMAIN VERIFIED
-  const domainVerifiedRaw = formData.get('domainVerified');
-  const domainVerified = domainVerifiedRaw === 'on' ? new Date() : null;
-  
-  // 1. Handle Keywords (Existing Logic)
-  const keywords = keywordsInput
-    ? keywordsInput.split(',').map((k) => k.trim().toLowerCase()).filter(Boolean)
-    : [name.toLowerCase(), 'service']; 
+  let keywords = existingCompany?.keywords || [name.toLowerCase()];
+  if (formData.has('keywords')) {
+      keywords = keywordsInput
+        ? keywordsInput.split(',').map((k) => k.trim().toLowerCase()).filter(Boolean)
+        : [];
+  }
 
-  // 2. Handle Images Logic (Existing Logic)
+  // --- IMAGE HANDLING (Fixes "Logo Removed" issue) ---
   const logoFile = formData.get('logo') as File;
   const otherImageFiles = formData.getAll('otherImages') as File[]; 
   
+  // Gallery Logic
   const retainedImagesJson = formData.get('retainedImages') as string;
   let retainedImages: string[] = [];
-  try {
-      if (retainedImagesJson) {
-          retainedImages = JSON.parse(retainedImagesJson);
-      }
-  } catch (e) {
-      console.error("Failed to parse retained images", e);
+  if (retainedImagesJson) {
+      try { retainedImages = JSON.parse(retainedImagesJson); } catch (e) {}
+  } else if (existingCompany) {
+      retainedImages = existingCompany.otherImages || []; // Keep existing if not touched
   }
 
   if (!name || !categoryId) return { error: "Name and Category are required." };
 
   try {
-    let logoUrl = undefined;
-    const newImageUrls: string[] = [];
+    // ✅ LOGO LOGIC FIX:
+    // 1. Default to existing logo.
+    // 2. If new file uploaded, overwrite it.
+    let logoUrl = existingCompany?.logoImage; 
 
-    // 3. Upload Logo (Existing Logic)
     if (logoFile && logoFile.size > 0) {
       const arrayBuffer = await logoFile.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
       const uploadResult = await new Promise<any>((resolve, reject) => {
         cloudinary.uploader.upload_stream(
-          { folder: "company_logos", transformation: [{ width: 200, height: 200, crop: "fill", quality: "auto", fetch_format: "auto" }] },
+          { folder: "company_logos", transformation: [{ width: 200, height: 200, crop: "fill" }] },
           (error, result) => (error ? reject(error) : resolve(result))
         ).end(buffer);
       });
       logoUrl = uploadResult.secure_url;
     }
 
-    // 4. Upload Gallery Images (Existing Logic)
+    // Upload Gallery
+    const newImageUrls: string[] = [];
     if (otherImageFiles.length > 0) {
       const uploadPromises = otherImageFiles.map(async (file) => {
         if (file.size > 0) {
@@ -639,7 +667,7 @@ export async function upsertCompany(prevState: any, formData: FormData) {
           const buffer = Buffer.from(arrayBuffer);
           return new Promise<string>((resolve, reject) => {
             cloudinary.uploader.upload_stream(
-              { folder: "company_showcase", transformation: [{ width: 1200, crop: "limit", quality: "auto", fetch_format: "auto" }] },
+              { folder: "company_showcase", transformation: [{ width: 1200, crop: "limit" }] },
               (error, result) => (error ? reject(error) : resolve(result!.secure_url))
             ).end(buffer);
           });
@@ -650,10 +678,9 @@ export async function upsertCompany(prevState: any, formData: FormData) {
       results.forEach(url => { if(url) newImageUrls.push(url) });
     }
 
-    // 5. Combine Lists
     const finalGalleryImages = [...retainedImages, ...newImageUrls];
 
-    // 6. Prepare Data Payload
+    // --- CONSTRUCT FULL PAYLOAD ---
     const dataPayload: any = {
       name,
       websiteUrl: website,
@@ -670,74 +697,66 @@ export async function upsertCompany(prevState: any, formData: FormData) {
       domainVerified,
       keywords,
       otherImages: finalGalleryImages,
+      logoImage: logoUrl, // ✅ Now correctly holds old logo if no new one
+      
+      // ✅ HIDDEN FIELDS MERGE (Fixes Email/Phone empty issue)
+      // We explicitly copy these from existingCompany because your form likely doesn't have inputs for them
+      contactEmail: getVal('contactEmail') || existingCompany?.contactEmail,
+      phone: getVal('phone') || existingCompany?.phone,
+      foundedYear: getVal('foundedYear') || existingCompany?.foundedYear,
+      metaTitle: getVal('metaTitle') || existingCompany?.metaTitle,
+      metaDescription: getVal('metaDescription') || existingCompany?.metaDescription,
+      socialLinks: existingCompany?.socialLinks || {}, 
+      createdAt: existingCompany?.createdAt
     };
 
-    if (logoUrl) dataPayload.logoImage = logoUrl;
-
-    // ============================================================
-    // ✅ NEW INTERCEPTION LOGIC STARTS HERE
-    // ============================================================
-
-    // 7. PRE-CALCULATE SUB-CATEGORY FOR CREATION
-    // We do this here so it is saved correctly in the PendingChange payload too
+    // Sub-Category Auto-Assign (Create only)
     if (!companyId && !dataPayload.subCategoryId) {
          const category = await prisma.category.findUnique({
             where: { id: categoryId },
             include: { subCategories: true }
          });
-         // Fallback to first subcategory if none provided
          if (category && category.subCategories.length > 0) {
              dataPayload.subCategoryId = category.subCategories[0].id;
-         } else {
-             return { error: "Category invalid or has no subcategories." };
          }
     }
 
-    // 8. ADD SLUG (For creation scenarios)
+    // Slug Auto-Assign (Create only)
     if (!companyId) {
-        dataPayload.slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        dataPayload.slug = name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-');
     }
 
-    // ------------------------------------------------------------
-    // A. IF DATA ENTRY USER -> SAVE TO PENDING CHANGES
-    // ------------------------------------------------------------
+    // --- SAVE TO PENDING CHANGES (Data Entry) ---
     if (userRole === 'DATA_ENTRY') {
         await prisma.pendingChange.create({
             data: {
                 model: "COMPANY",
                 action: companyId ? "UPDATE" : "CREATE",
-                targetId: companyId || null, // null if creating
-                data: dataPayload as any, // Save the full prepared JSON
+                targetId: companyId || null,
+                data: dataPayload, // ✅ Payload is now complete with merged data
                 requesterId: userId as string,
                 status: "PENDING"
             }
         });
         
-        // Revalidate the data entry views
         revalidatePath('/data-entry/companies');
         return { success: true, message: "Request submitted for Admin Approval." };
     }
 
-    // ------------------------------------------------------------
-    // B. IF ADMIN -> EXECUTE DIRECTLY (Existing Logic)
-    // ------------------------------------------------------------
+    // --- DIRECT EXECUTION (Admin) ---
     if (companyId) {
-      // --- UPDATE ---
       await prisma.company.update({
         where: { id: companyId },
         data: dataPayload,
       });
     } else {
-      // --- CREATE ---
-      // Note: We already calculated subCategoryId and slug above in step 7 & 8
-      // so we can just use dataPayload directly now.
       await prisma.company.create({
         data: dataPayload
       });
     }
 
     revalidatePath('/admin/companies');
-    revalidatePath('/business/dashboard');
+    revalidatePath('/data-entry/companies');
 
     return { success: true };
 

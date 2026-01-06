@@ -1,11 +1,12 @@
+import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { BlogManagement } from "@/components/admin_components/blog-components/blog-management"; // ✅ Reusing your existing component
+import { redirect } from "next/navigation";
+import { BlogManagement } from "@/components/admin_components/blog-components/blog-management";
 import { Prisma } from "@prisma/client";
 
-// Force dynamic rendering so staff always see the latest posts
 export const dynamic = 'force-dynamic';
 
-export const metadata = { title: 'Blog Management - Data Entry' };
+export const metadata = { title: 'Blog Management - Blog Entry' };
 
 type PageProps = {
   searchParams: Promise<{ 
@@ -15,7 +16,15 @@ type PageProps = {
   }>;
 };
 
-export default async function DataEntryBlogPage({ searchParams }: PageProps) {
+export default async function BlogEntryManagementPage({ searchParams }: PageProps) {
+  const session = await auth();
+  
+  // 🔒 Security Check
+  // @ts-ignore
+  if (!session || (session.user.role !== "BLOG_ENTRY" && session.user.role !== "ADMIN")) {
+    return redirect("/admin/login");
+  }
+
   const resolvedSearchParams = await searchParams;
   
   // 1. Pagination Setup
@@ -41,16 +50,14 @@ export default async function DataEntryBlogPage({ searchParams }: PageProps) {
     where.category = { equals: category, mode: 'insensitive' };
   }
 
-  // 4. Fetch Data (Identical to Admin Page)
+  // 4. Fetch Data
   const [blogs, totalCount, distinctBlogCategories, allCompanyCategories, distinctCities] = await Promise.all([
-    // A. Fetch Blogs
     prisma.blog.findMany({
       where,
       orderBy: { createdAt: 'desc' },
       skip: skip,
       take: pageSize,
       select: { 
-         // --- Existing Fields (For Table) ---
          id: true, 
          headline: true, 
          blogUrl: true, 
@@ -60,32 +67,23 @@ export default async function DataEntryBlogPage({ searchParams }: PageProps) {
          authorName: true,
          linkedCategoryId: true,
          linkedCity: true,
-
-         // --- ✅ NEW FIELDS (Required for Edit Modal) ---
+         linkedCategory: true,
          content: true,
          metaTitle: true,
          metaDescription: true,
          metaKeywords: true
       }
     }),
-    
-    // B. Count Total Blogs
     prisma.blog.count({ where }),
-
-    // C. Fetch Blog Categories for Filter
     prisma.blog.findMany({
       select: { category: true },
       distinct: ['category'],
       orderBy: { category: 'asc' }
     }),
-
-    // D. Fetch Company Categories for Linking
     prisma.category.findMany({
       select: { id: true, name: true },
       orderBy: { name: 'asc' }
     }),
-
-    // E. Fetch Cities for Linking
     prisma.company.findMany({
        select: { city: true },
        distinct: ['city'],
@@ -94,36 +92,32 @@ export default async function DataEntryBlogPage({ searchParams }: PageProps) {
     }),
   ]);
 
-  // Extract strings for dropdowns
-  const uniqueBlogCategories = distinctBlogCategories
-    .map(b => b.category)
-    .filter((c): c is string => !!c);
-
-  const uniqueCities = distinctCities
-    .map(c => c.city)
-    .filter((c): c is string => !!c);
+  const uniqueBlogCategories = distinctBlogCategories.map(b => b.category).filter((c): c is string => !!c);
+  const uniqueCities = distinctCities.map(c => c.city).filter((c): c is string => !!c);
+  
+  // Format categories correctly for the component
+  const formattedCompanyCategories = allCompanyCategories.map(c => ({ id: c.id, name: c.name }));
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
+    // ✅ FIX: Use 'max-w-7xl' (matches Data Entry) and 'overflow-x-hidden' (prevents scrollbar)
+    <div className="max-w-xl lg:max-w-5xl mx-auto pb-20 px-4 md:px-6 overflow-x-hidden">
       
-      {/* Header specific to Data Entry */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-[#000032]">Blog Management</h1>
-        <p className="text-gray-500">
-           Data Entry Portal: Create and manage articles.
-        </p>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold tracking-tight text-gray-900">Manage Blogs</h1>
+        <p className="text-gray-500">Create, edit, and publish content.</p>
       </div>
 
-      {/* ✅ Reuse the exact same Client Component */}
-      <BlogManagement 
-        initialBlogs={blogs} 
-        uniqueCategories={uniqueBlogCategories} 
-        companyCategories={allCompanyCategories} 
-        cityOptions={uniqueCities} 
-        totalCount={totalCount}
-        currentPage={page}
-        pageSize={pageSize}
-      />
+      <div className="w-full">
+        <BlogManagement 
+          initialBlogs={blogs} 
+          uniqueCategories={uniqueBlogCategories}
+          companyCategories={formattedCompanyCategories}
+          cityOptions={uniqueCities}
+          totalCount={totalCount}
+          currentPage={page}
+          pageSize={pageSize}
+        />
+      </div>
     </div>
   );
 }

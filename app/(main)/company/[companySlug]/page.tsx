@@ -21,6 +21,7 @@ import { CallToActionCard } from '@/components/company_components/call-to-action
 import { ContactDetailsCard } from '@/components/company_components/contact-details-card';
 import { SimilarCompaniesCarousel } from '@/components/company_components/similar-companies-carousel';
 import { BusinessUpdatesCarousel } from '@/components/company_components/business-updates-carousel';
+import { RequestQuoteCard } from '@/components/company_components/request-quote-card';
 
 export const dynamic = 'force-dynamic';
 
@@ -118,8 +119,13 @@ export default async function CompanyProfilePage({ params, searchParams }: PageP
               email={(company as any).contact?.email || (company as any).email}
               address={company.address}
             />
+            <RequestQuoteCard 
+              companyId={company.id}
+              companyName={company.name}
+            />
             <CallToActionCard
               phoneNumber={(company as any).contact?.phone || (company as any).phone || "1-800-123-4567"}
+              companyId={company.id}
             />
             <TransparencyCard
               companyName={company.name}

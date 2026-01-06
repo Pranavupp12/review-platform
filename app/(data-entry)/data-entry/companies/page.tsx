@@ -79,7 +79,7 @@ export default async function DataEntryCompaniesPage({ searchParams }: PageProps
   ]);
 
   return (
-    <div className="max-w-7xl mx-auto pb-20">
+    <div className=" max-w-xl lg:max-w-7xl mx-auto pb-20">
 
       {/* Header */}
       <div className="flex justify-between items-center mb-6">

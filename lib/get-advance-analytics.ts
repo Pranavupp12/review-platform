@@ -8,19 +8,28 @@ export async function getSearchAnalytics(companyId: string) {
   // 1. Get stats for the last 30 days
   const thirtyDaysAgo = subDays(new Date(), 30);
 
-  const stats = await prisma.searchQueryStat.findMany({
-    where: {
-      companyId: companyId,
-      date: { gte: thirtyDaysAgo }
-    }
-  });
+  // ✅ UPDATED: Fetch both Search Stats AND Interaction Stats in parallel
+  const [stats, interactions] = await Promise.all([
+    prisma.searchQueryStat.findMany({
+      where: {
+        companyId: companyId,
+        date: { gte: thirtyDaysAgo }
+      }
+    }),
+    prisma.companyAnalytics.findMany({
+      where: {
+        companyId: companyId,
+        date: { gte: thirtyDaysAgo }
+      },
+      select: { leadsGenerated: true, callsGenerated: true }
+    })
+  ]);
 
-  // 2. Aggregate Data by "Query + Location + UserRegion"
-  // ✅ FIX: Added userRegion to the Map Key and the Value Type
+  // 2. Aggregate Data by "Query + Location + UserRegion" (EXISTING LOGIC)
   const queryMap = new Map<string, { 
       query: string, 
       location: string, 
-      userRegion: string, // <-- Added this
+      userRegion: string, 
       impressions: number, 
       clicks: number 
   }>();
@@ -32,14 +41,12 @@ export async function getSearchAnalytics(companyId: string) {
     totalImpressions += stat.impressions;
     totalClicks += stat.clicks;
 
-    // ✅ FIX: Include userRegion in the unique key
-    // Otherwise, searches from "Delhi" and "New York" for the same query would merge.
     const mapKey = `${stat.query}|${stat.location}|${stat.userRegion || 'unknown'}`;
 
     const existing = queryMap.get(mapKey) || { 
         query: stat.query, 
         location: stat.location,
-        userRegion: stat.userRegion || 'unknown', // <-- Capture it here
+        userRegion: stat.userRegion || 'unknown',
         impressions: 0, 
         clicks: 0 
     };
@@ -49,22 +56,28 @@ export async function getSearchAnalytics(companyId: string) {
     queryMap.set(mapKey, existing);
   });
 
-  // 3. Convert Map to Array & Sort by Clicks
-  // You are currently limiting to 10. If you want to see more during testing, increase this number.
+  // 3. Convert Map to Array & Sort by Clicks (EXISTING LOGIC)
   const topQueries = Array.from(queryMap.values())
     .sort((a, b) => b.clicks - a.clicks)
-    .slice(0, 20); // Increased to 20 just in case
+    .slice(0, 20); 
 
-  // 4. Calculate Stats
+  // 4. Calculate Stats (EXISTING LOGIC)
   const estimatedCost = totalClicks * 1.50; 
   const ctr = totalImpressions > 0 ? ((totalClicks / totalImpressions) * 100).toFixed(1) : 0;
+
+  // ✅ NEW: Calculate Total Leads and Calls
+  const totalLeads = interactions.reduce((sum, i) => sum + i.leadsGenerated, 0);
+  const totalCalls = interactions.reduce((sum, i) => sum + i.callsGenerated, 0);
 
   return {
     totals: {
       impressions: totalImpressions,
       clicks: totalClicks,
       ctr: ctr,
-      adSpend: estimatedCost.toFixed(2)
+      adSpend: estimatedCost.toFixed(2),
+      // ✅ Return new stats
+      leads: totalLeads,
+      calls: totalCalls
     },
     topQueries 
   };

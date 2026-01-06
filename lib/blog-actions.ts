@@ -8,10 +8,10 @@ import { auth } from "@/auth";
 async function getUserSession() {
   const session = await auth();
   if (!session?.user) return null;
-  return session.user; // Returns object with { id, role, ... }
+  return session.user; 
 }
 
-// 1. Create Blog (Intercepts for Data Entry)
+// 1. Create Blog (Intercepts for Staff)
 export async function createBlog(formData: FormData, content: string) {
   const user = await getUserSession();
   if (!user) return { success: false, error: "Unauthorized" };
@@ -19,8 +19,8 @@ export async function createBlog(formData: FormData, content: string) {
   // @ts-ignore
   const userRole = user.role;
 
-  // 1. Check Permissions
-  if (userRole !== 'ADMIN' && userRole !== 'DATA_ENTRY') {
+  // ✅ 1. UPDATE PERMISSIONS: Allow BLOG_ENTRY
+  if (userRole !== 'ADMIN' && userRole !== 'DATA_ENTRY' && userRole !== 'BLOG_ENTRY') {
     return { success: false, error: "Unauthorized access." };
   }
 
@@ -37,18 +37,17 @@ export async function createBlog(formData: FormData, content: string) {
       content: content, 
     };
 
-    // Validation
     if (!rawData.headline || !rawData.content || !rawData.blogUrl) {
         return { success: false, error: "Missing required fields." };
     }
 
-    // ✅ INTERCEPTION LOGIC: If Data Entry, save to PendingChange
-    if (userRole === 'DATA_ENTRY') {
+    // ✅ 2. INTERCEPTION: If Staff (Data Entry OR Blog Entry), submit for approval
+    if (userRole === 'DATA_ENTRY' || userRole === 'BLOG_ENTRY') {
         await prisma.pendingChange.create({
             data: {
                 model: "BLOG",
                 action: "CREATE",
-                data: rawData, // Stores the form data
+                data: rawData, 
                 // @ts-ignore
                 requesterId: user.id,
                 status: "PENDING"
@@ -57,13 +56,14 @@ export async function createBlog(formData: FormData, content: string) {
         return { success: true, message: "Draft submitted for Admin approval." };
     }
 
-    // ✅ IF ADMIN: Execute Immediately
+    // ✅ 3. ADMIN: Execute Immediately
     await prisma.blog.create({
       data: rawData
     });
 
     revalidatePath('/admin/blogs');
     revalidatePath('/data-entry/blogs');
+    revalidatePath('/blog-entry/blogs'); // ✅ Revalidate new dashboard
     return { success: true, message: "Blog published successfully." };
 
   } catch (error) {
@@ -72,7 +72,7 @@ export async function createBlog(formData: FormData, content: string) {
   }
 }
 
-// 2. Update Blog (Intercepts for Data Entry)
+// 2. Update Blog (Intercepts for Staff)
 export async function updateBlog(id: string, formData: FormData, content: string) {
   const user = await getUserSession();
   if (!user) return { success: false, error: "Unauthorized" };
@@ -80,7 +80,8 @@ export async function updateBlog(id: string, formData: FormData, content: string
   // @ts-ignore
   const userRole = user.role;
 
-  if (userRole !== 'ADMIN' && userRole !== 'DATA_ENTRY') {
+  // ✅ UPDATE PERMISSIONS
+  if (userRole !== 'ADMIN' && userRole !== 'DATA_ENTRY' && userRole !== 'BLOG_ENTRY') {
     return { success: false, error: "Unauthorized access." };
   }
 
@@ -97,18 +98,17 @@ export async function updateBlog(id: string, formData: FormData, content: string
       content: content, 
     };
 
-    // Validation
     if (!rawData.headline || !rawData.content || !rawData.blogUrl) {
         return { success: false, error: "Missing required fields." };
     }
 
-    // ✅ INTERCEPTION LOGIC: If Data Entry, save to PendingChange
-    if (userRole === 'DATA_ENTRY') {
+    // ✅ INTERCEPTION
+    if (userRole === 'DATA_ENTRY' || userRole === 'BLOG_ENTRY') {
         await prisma.pendingChange.create({
             data: {
                 model: "BLOG",
                 action: "UPDATE",
-                targetId: id, // Track which blog is being edited
+                targetId: id, 
                 data: rawData,
                 // @ts-ignore
                 requesterId: user.id,
@@ -118,7 +118,7 @@ export async function updateBlog(id: string, formData: FormData, content: string
         return { success: true, message: "Changes submitted for Admin approval." };
     }
 
-    // ✅ IF ADMIN: Update Immediately
+    // ✅ ADMIN EXECUTION
     await prisma.blog.update({
       where: { id },
       data: rawData
@@ -126,6 +126,7 @@ export async function updateBlog(id: string, formData: FormData, content: string
 
     revalidatePath('/admin/blogs');
     revalidatePath('/data-entry/blogs');
+    revalidatePath('/blog-entry/blogs'); // ✅ Revalidate
     revalidatePath(`/blog/${rawData.blogUrl}`);
     return { success: true, message: "Blog updated successfully." };
 
@@ -135,21 +136,23 @@ export async function updateBlog(id: string, formData: FormData, content: string
   }
 }
 
-// 3. Delete Blog (Direct for both, or restrict if preferred)
+// 3. Delete Blog
 export async function deleteBlog(id: string) {
     const user = await getUserSession();
     // @ts-ignore
-    if (!user || (user.role !== 'ADMIN' && user.role !== 'DATA_ENTRY')) {
+    const userRole = user?.role;
+
+    // ✅ UPDATE PERMISSIONS
+    if (!user || (userRole !== 'ADMIN' && userRole !== 'DATA_ENTRY' && userRole !== 'BLOG_ENTRY')) {
         return { success: false, error: "Unauthorized access." };
     }
 
     try {
-        // Note: Currently allowing Data Entry to delete directly. 
-        // If you want to require approval for deletion, you would add the PendingChange logic here too.
         await prisma.blog.delete({ where: { id } });
         
         revalidatePath('/admin/blogs');
         revalidatePath('/data-entry/blogs');
+        revalidatePath('/blog-entry/blogs'); // ✅ Revalidate
         return { success: true };
     } catch (error) {
         console.error("Delete Error:", error);
@@ -157,11 +160,14 @@ export async function deleteBlog(id: string) {
     }
 }
 
-// 4. Link Category (Direct for both - minor edit)
+// 4. Link Category
 export async function linkCategoryToBlog(blogId: string, categoryId: string | null, city: string | null) {
   const user = await getUserSession();
   // @ts-ignore
-  if (!user || (user.role !== 'ADMIN' && user.role !== 'DATA_ENTRY')) {
+  const userRole = user?.role;
+
+  // ✅ UPDATE PERMISSIONS
+  if (!user || (userRole !== 'ADMIN' && userRole !== 'DATA_ENTRY' && userRole !== 'BLOG_ENTRY')) {
       return { success: false, error: "Unauthorized access." };
   }
 
@@ -173,6 +179,7 @@ export async function linkCategoryToBlog(blogId: string, categoryId: string | nu
     
     revalidatePath("/admin/blogs");
     revalidatePath('/data-entry/blogs');
+    revalidatePath('/blog-entry/blogs'); // ✅ Revalidate
     return { success: true };
   } catch (error) {
     console.error("Failed to link category:", error);
