@@ -21,7 +21,6 @@ type TopCompany = {
   };
 };
 
-// ✅ HELPER: Format Date as dd/mm/yyyy
 function formatDate(date: Date) {
   return new Date(date).toLocaleDateString('en-GB', {
     day: '2-digit',
@@ -54,17 +53,15 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
 
   if (!blog) return notFound();
 
-  // 2. Fetch Top 10 Companies (With extra fields for the Card)
+  // 2. Fetch Top 10 Companies (Only if linked)
   let topCompanies: TopCompany[] = [];
+  let listTitle = "";
 
   if (blog.linkedCategoryId) {
-    
-    // ✅ BUILD DYNAMIC FILTER
     const whereClause: any = {
        categoryId: blog.linkedCategoryId
     };
 
-    // If a city is linked, filter by it
     if (blog.linkedCity) {
        whereClause.city = { equals: blog.linkedCity, mode: 'insensitive' };
     }
@@ -86,11 +83,12 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
       }
     });
 
-    const listTitle = blog.linkedCity 
+    listTitle = blog.linkedCity 
      ? `Top 10 ${blog.linkedCategory?.name} Companies in ${blog.linkedCity}`
      : `Top 10 ${blog.linkedCategory?.name} Companies`;
-  
+  } // ✅ CLOSED THE IF BLOCK HERE
 
+  // ✅ RETURN STATEMENT IS NOW ACCESSIBLE TO ALL BLOGS
   return (
     <div className="min-h-screen bg-white pb-20">
        
@@ -125,7 +123,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
             </div>
        </div>
 
-       {/* 2. COVER IMAGE (Added Here) */}
+       {/* 2. COVER IMAGE */}
        {blog.imageUrl && (
             <div className="w-full pb-12 pt-12 md:pt-20 md:pb-20">
                 <div className="max-w-5xl mx-auto px-4 sm:px-6">
@@ -144,7 +142,6 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
 
        {/* 3. MAIN CONTENT */}
        <div className="max-w-5xl mx-auto px-4 sm:px-6">
-           {/* If no image, add top padding to separate content from header */}
            <div className={!blog.imageUrl ? "pt-12" : ""}>
                <div 
                   dangerouslySetInnerHTML={{ __html: blog.content }} 
@@ -155,13 +152,11 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
            </div>
        </div>
 
-       {/* 4. TOP 10 LIST SECTION */}
+       {/* 4. TOP 10 LIST SECTION (Conditional) */}
        {blog.linkedCategory && topCompanies.length > 0 && (
          <div className="pt-16 mt-16">
             <div className="max-w-4xl mx-auto px-4 sm:px-6">
                 <div className="bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden">
-                    
-                    {/* List Header */}
                     <div className="text-center p-8 pb-4">
                         <Badge className="mb-3 bg-[#0ABED6] hover:bg-[#09A8BD] border-none text-white px-3 py-1 text-sm">
                             Recommended
@@ -174,7 +169,6 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
                         </p>
                     </div>
 
-                    {/* Company List */}
                     <div className="divide-y divide-gray-200 border-t border-gray-200">
                         {topCompanies.map((company) => (
                             <CompanyListCard
@@ -196,7 +190,6 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
                         ))}
                     </div>
                     
-                    {/* Footer Link */}
                     <div className="p-6 text-center bg-white border-t border-gray-200">
                         <Link 
                             href={`/categories/${blog.linkedCategory.slug}`} 
@@ -211,5 +204,4 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
        )}
     </div>
   );
-  }
 }

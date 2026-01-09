@@ -3,6 +3,30 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
+import { uploadToCloud } from "./cloudinary";
+
+// --- HELPER: Upload Image to Cloudinary ---
+export async function uploadEditorImage(formData: FormData) {
+  try {
+    const file = formData.get('file') as File;
+
+    if (!file) {
+      return { success: false, error: 'No file provided' };
+    }
+
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    // Upload using the helper function
+    // @ts-ignore
+    const result: any = await uploadToCloud(buffer, 'blog-content-images');
+
+    return { success: true, url: result.secure_url };
+  } catch (error) {
+    console.error('Image upload failed:', error);
+    return { success: false, error: 'Failed to upload image' };
+  }
+}
 
 // --- HELPER: Get Current User with Role ---
 async function getUserSession() {
@@ -10,6 +34,7 @@ async function getUserSession() {
   if (!session?.user) return null;
   return session.user; 
 }
+
 
 // 1. Create Blog (Intercepts for Staff)
 export async function createBlog(formData: FormData, content: string) {

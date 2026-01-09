@@ -186,7 +186,6 @@ export function CompanyModal({ categories, company, userRole }: CompanyModalProp
     setSelectedCityName(val);
   };
 
-  // ... (Other handlers unchanged) ...
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) { setLogoFile(file); setLogoPreview(URL.createObjectURL(file)); }

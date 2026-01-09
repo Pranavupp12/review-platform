@@ -85,7 +85,7 @@ export default async function DataEntryCompaniesPage({ searchParams }: PageProps
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold text-[#000032] flex items-center gap-2">
-             <Building2 className="h-6 w-6 text-[#0ABED6]" /> Companies
+          <Building2 className="h-6 w-6 text-[#0ABED6]" /> Companies
           </h1>
           <p className="text-sm text-gray-500">View and edit company details.</p>
         </div>

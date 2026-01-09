@@ -23,6 +23,7 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
+
 // Define the Zod Schema for validation
 const RegisterSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -572,30 +573,27 @@ export async function upsertCompany(prevState: any, formData: FormData) {
 
   const companyId = formData.get('companyId') as string;
 
-  // ✅ 1. FETCH EXISTING DATA (CRUCIAL STEP)
-  // We need this to fallback to old values if the form doesn't send them.
+  // 1. FETCH EXISTING DATA
   let existingCompany: any = null;
   if (companyId) {
     existingCompany = await prisma.company.findUnique({ where: { id: companyId } });
     if (!existingCompany) return { error: "Company not found." };
   }
 
-  // ✅ 2. HELPER: Get Value Safe
-  // Logic: If the form has the key, use it. If not, KEEP the database value.
+  // 2. HELPER: Get Value Safe
   const getVal = (key: string) => {
     if (formData.has(key)) return formData.get(key) as string;
-    // If field is missing from form, return existing DB value (or empty string if new)
     return existingCompany ? existingCompany[key] : "";
   };
 
-  // --- EXTRACT BASIC FIELDS ---
+  // --- EXTRACT FIELDS ---
   const name = getVal('name');
   const website = getVal('websiteUrl') || getVal('website'); 
   const categoryId = getVal('categoryId');
   const subCategoryId = getVal('subCategoryId');
   const description = getVal('briefIntroduction') || getVal('description'); 
   
-  // --- LOCATION FIELDS (Fixes "City/Country Changed" issue) ---
+  // --- LOCATION ---
   const city = getVal('city');
   const country = getVal('country');
   const state = getVal('state');
@@ -604,18 +602,30 @@ export async function upsertCompany(prevState: any, formData: FormData) {
   
   const companyType = getVal('companyType') as 'SERVICE' | 'PRODUCT'; 
   
+  // --- CONTACT INFO LOGIC ---
+  // We prefer form data, then fall back to existing nested contact data
+  const emailInput = formData.get('contactEmail') as string || existingCompany?.contact?.email || "";
+  const phoneInput = formData.get('phone') as string || existingCompany?.contact?.phone || "";
+
   // --- RESTRICTED FIELDS ---
-  // If user is ADMIN, trust the form. If DATA_ENTRY, keep existing values.
   let claimed = existingCompany?.claimed || false;
   let domainVerified = existingCompany?.domainVerified || null;
 
   if (userRole === 'ADMIN') {
-      if (formData.has('claimed')) claimed = formData.get('claimed') === 'on';
-      if (formData.has('domainVerified')) {
-          domainVerified = formData.get('domainVerified') === 'on' ? new Date() : null;
+      // ✅ FIX: Directly assign the result. 
+      // If key is missing (unchecked), .get() returns null, so it becomes false.
+      claimed = formData.get('claimed') === 'on';
+
+      // ✅ FIX: Same logic for domainVerified. 
+      // If key is missing, we set it to null (unverified).
+      if (formData.get('domainVerified') === 'on') {
+          // Only update date if it wasn't already verified to avoid resetting the date
+          domainVerified = existingCompany?.domainVerified || new Date();
+      } else {
+          domainVerified = null;
       }
   }
-
+  
   // --- KEYWORDS ---
   const keywordsInput = formData.get('keywords') as string;
   let keywords = existingCompany?.keywords || [name.toLowerCase()];
@@ -625,25 +635,21 @@ export async function upsertCompany(prevState: any, formData: FormData) {
         : [];
   }
 
-  // --- IMAGE HANDLING (Fixes "Logo Removed" issue) ---
+  // --- IMAGES ---
   const logoFile = formData.get('logo') as File;
   const otherImageFiles = formData.getAll('otherImages') as File[]; 
   
-  // Gallery Logic
   const retainedImagesJson = formData.get('retainedImages') as string;
   let retainedImages: string[] = [];
   if (retainedImagesJson) {
       try { retainedImages = JSON.parse(retainedImagesJson); } catch (e) {}
   } else if (existingCompany) {
-      retainedImages = existingCompany.otherImages || []; // Keep existing if not touched
+      retainedImages = existingCompany.otherImages || [];
   }
 
   if (!name || !categoryId) return { error: "Name and Category are required." };
 
   try {
-    // ✅ LOGO LOGIC FIX:
-    // 1. Default to existing logo.
-    // 2. If new file uploaded, overwrite it.
     let logoUrl = existingCompany?.logoImage; 
 
     if (logoFile && logoFile.size > 0) {
@@ -658,7 +664,6 @@ export async function upsertCompany(prevState: any, formData: FormData) {
       logoUrl = uploadResult.secure_url;
     }
 
-    // Upload Gallery
     const newImageUrls: string[] = [];
     if (otherImageFiles.length > 0) {
       const uploadPromises = otherImageFiles.map(async (file) => {
@@ -680,7 +685,7 @@ export async function upsertCompany(prevState: any, formData: FormData) {
 
     const finalGalleryImages = [...retainedImages, ...newImageUrls];
 
-    // --- CONSTRUCT FULL PAYLOAD ---
+    // --- CONSTRUCT PAYLOAD ---
     const dataPayload: any = {
       name,
       websiteUrl: website,
@@ -697,20 +702,25 @@ export async function upsertCompany(prevState: any, formData: FormData) {
       domainVerified,
       keywords,
       otherImages: finalGalleryImages,
-      logoImage: logoUrl, // ✅ Now correctly holds old logo if no new one
-      
-      // ✅ HIDDEN FIELDS MERGE (Fixes Email/Phone empty issue)
-      // We explicitly copy these from existingCompany because your form likely doesn't have inputs for them
-      contactEmail: getVal('contactEmail') || existingCompany?.contactEmail,
-      phone: getVal('phone') || existingCompany?.phone,
+      logoImage: logoUrl,
+
+      // ✅ FIX: Structure this correctly for Prisma
+      contact: {
+        email: emailInput,
+        phone: phoneInput
+      },
+
+      // These keys are temporarily kept here if needed for legacy logic or Data Entry review,
+      // BUT we must remove them before sending to Prisma.
+      contactEmail: emailInput, 
+      phone: phoneInput,
+
       foundedYear: getVal('foundedYear') || existingCompany?.foundedYear,
       metaTitle: getVal('metaTitle') || existingCompany?.metaTitle,
       metaDescription: getVal('metaDescription') || existingCompany?.metaDescription,
       socialLinks: existingCompany?.socialLinks || {}, 
-      createdAt: existingCompany?.createdAt
     };
 
-    // Sub-Category Auto-Assign (Create only)
     if (!companyId && !dataPayload.subCategoryId) {
          const category = await prisma.category.findUnique({
             where: { id: categoryId },
@@ -721,19 +731,18 @@ export async function upsertCompany(prevState: any, formData: FormData) {
          }
     }
 
-    // Slug Auto-Assign (Create only)
     if (!companyId) {
         dataPayload.slug = name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-');
     }
 
-    // --- SAVE TO PENDING CHANGES (Data Entry) ---
+    // --- DATA ENTRY (Pending Request) ---
     if (userRole === 'DATA_ENTRY') {
         await prisma.pendingChange.create({
             data: {
                 model: "COMPANY",
                 action: companyId ? "UPDATE" : "CREATE",
                 targetId: companyId || null,
-                data: dataPayload, // ✅ Payload is now complete with merged data
+                data: dataPayload, 
                 requesterId: userId as string,
                 status: "PENDING"
             }
@@ -743,15 +752,46 @@ export async function upsertCompany(prevState: any, formData: FormData) {
         return { success: true, message: "Request submitted for Admin Approval." };
     }
 
-    // --- DIRECT EXECUTION (Admin) ---
+    // --- ADMIN (Direct Execution) ---
     if (companyId) {
+      // ✅ FIX: Sanitize payload for UPDATE
+      const { 
+        categoryId, 
+        subCategoryId, 
+        socialLinks, 
+        foundedYear, 
+        metaTitle, 
+        metaDescription, 
+        createdAt,
+        contactEmail, // <--- REMOVE THIS
+        phone,        // <--- REMOVE THIS
+        ...restData 
+      } = dataPayload;
+
+      const updateData: any = { ...restData };
+
+      // Connect Relations
+      if (categoryId) updateData.category = { connect: { id: categoryId } };
+      if (subCategoryId) updateData.subCategory = { connect: { id: subCategoryId } };
+
       await prisma.company.update({
         where: { id: companyId },
-        data: dataPayload,
+        data: updateData,
       });
     } else {
+      // ✅ FIX: Sanitize payload for CREATE as well
+      const { 
+          socialLinks, 
+          foundedYear, 
+          metaTitle, 
+          metaDescription, 
+          contactEmail, // <--- REMOVE THIS
+          phone,        // <--- REMOVE THIS
+          ...createData 
+      } = dataPayload;
+      
       await prisma.company.create({
-        data: dataPayload
+        data: createData
       });
     }
 
@@ -765,6 +805,7 @@ export async function upsertCompany(prevState: any, formData: FormData) {
     return { error: "Failed to save company." };
   }
 }
+
 
 // --- 14. ADMIN: UPDATE BADGES ---
 export async function updateCompanyBadges(companyId: string, badges: string[]) {
