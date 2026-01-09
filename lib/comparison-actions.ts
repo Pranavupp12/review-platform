@@ -2,27 +2,35 @@
 
 import { prisma } from "@/lib/prisma";
 
-// 1. Fetch list of competitors (Same Category)
+// 1. Fetch list of competitors (Prioritizing Sub-Category)
 export async function getCompetitors(companyId: string) {
-  const company = await prisma.company.findUnique({
+  // A. Get the current company's IDs first
+  const currentCompany = await prisma.company.findUnique({
     where: { id: companyId },
-    select: { 
-      id: true, 
-      category: { 
-        select: { 
-          companies: { 
-            select: { id: true, name: true },
-            where: { id: { not: companyId } } // Exclude self
-          } 
-        } 
-      } 
-    }
+    select: { categoryId: true, subCategoryId: true }
   });
 
-  return company?.category?.companies || [];
+  if (!currentCompany) return [];
+
+  // B. Find competitors that match EITHER SubCategory OR Category
+  const competitors = await prisma.company.findMany({
+    where: {
+      id: { not: companyId }, // Exclude self
+      OR: [
+        // Priority 1: Exact Sub-Category Match (e.g., "Cosmetic Dentists")
+        { subCategoryId: currentCompany.subCategoryId },
+        // Priority 2: Broad Category Match (e.g., "Health & Medical")
+        { categoryId: currentCompany.categoryId }
+      ]
+    },
+    select: { id: true, name: true },
+    take: 20 // Limit to keep the dropdown manageable
+  });
+
+  return competitors;
 }
 
-// 2. Fetch Comparison Data
+// 2. Fetch Comparison Data (No changes needed here, your logic was good)
 export async function getComparisonData(myCompanyId: string, competitorId: string) {
   // Helper to aggregate stats
   const getStats = async (id: string) => {

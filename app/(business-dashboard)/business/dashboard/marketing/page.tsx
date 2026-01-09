@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { CreateCampaignForm } from "@/components/business_dashboard/create-campaign-form";
 import CampaignActions from "@/components/business_dashboard/campaign-actions";
 import { EmailUsageTracker } from "@/components/business_dashboard/email-usage-tracker";
-import { Mail, History, Users, Sparkles, Megaphone, Palette } from "lucide-react";
+import { Mail, History, Users, Sparkles, Zap, Crown } from "lucide-react";
 import { redirect } from "next/navigation";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
@@ -11,6 +11,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 function formatDate(date: Date) {
    return new Date(date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
+
+// ✅ CONFIG: Define limits for each plan
+// Make sure these Keys match your Prisma Enum (likely uppercase: FREE, GROWTH, SCALE)
+const PLAN_CONFIG: Record<string, { limit: number; batchSize: number }> = {
+   FREE: { limit: 10, batchSize: 50 },
+   GROWTH: { limit: 300, batchSize: Infinity },
+   SCALE: { limit: 3000, batchSize: Infinity },
+   CUSTOM: { limit: Infinity, batchSize: Infinity },
+   // Fallback for legacy PRO users (Treat as Growth or Scale)
+   PRO: { limit: 300, batchSize: Infinity } 
+};
 
 export const metadata = { title: "Email Marketing" };
 
@@ -24,27 +35,38 @@ export default async function MarketingPage() {
       select: { plan: true, emailUsageCount: true }
    });
 
-   // 2. If PRO, fetch data and render content
    const campaigns = await prisma.campaign.findMany({
       where: { companyId: session.user.companyId },
       orderBy: { createdAt: 'desc' }
    });
 
-   // 1. Define Limit Logic
-   const FREE_LIMIT = 10;
-   const usage = company?.emailUsageCount || 0;
-   const isPro = company?.plan === "PRO";
+   // 2. ✅ CALCULATE LIMITS DYNAMICALLY
+   const userPlan = company?.plan || "FREE";
    
-   // A user is blocked if they are NOT Pro AND have hit the limit
-   const isLimitReached = !isPro && usage >= FREE_LIMIT;
+   // Get config for plan, or fallback to FREE if plan name doesn't exist
+   const config = PLAN_CONFIG[userPlan] || PLAN_CONFIG.FREE;
+   
+   const usage = company?.emailUsageCount || 0;
+   
+   // Limit is reached if it's NOT infinite AND usage >= limit
+   const isLimitReached = config.limit !== Infinity && usage >= config.limit;
+
+   // Helper for badge styling
+   const getBadge = (plan: string) => {
+      switch(plan) {
+         case "GROWTH": return <div className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded-full flex items-center gap-2 border border-blue-200"><Sparkles className="h-3 w-3" /> Growth Plan</div>;
+         case "SCALE": return <div className="px-3 py-1 bg-purple-100 text-purple-700 text-xs font-bold rounded-full flex items-center gap-2 border border-purple-200"><Zap className="h-3 w-3" /> Scale Plan</div>;
+         case "CUSTOM": return <div className="px-3 py-1 bg-amber-100 text-amber-700 text-xs font-bold rounded-full flex items-center gap-2 border border-amber-200"><Crown className="h-3 w-3" /> Custom Plan</div>;
+         case "PRO": return <div className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded-full flex items-center gap-2 border border-blue-200"><Sparkles className="h-3 w-3" /> Pro Plan</div>;
+         default: return <div className="px-3 py-1 bg-gray-100 text-gray-600 text-xs font-bold rounded-full border border-gray-200">Free Plan</div>;
+      }
+   };
 
    return (
       <div className="space-y-10 max-w-6xl mx-auto pb-20">
 
          {/* Header */}
          <div className="border-b border-gray-200 pb-5 flex justify-between items-start md:items-center">
-
-            {/* Left: Title & Description */}
             <div>
                <h1 className="text-3xl font-bold text-[#000032] flex items-center gap-3">
                   <Mail className="h-8 w-8 text-[#0ABED6]" /> Email Marketing
@@ -53,27 +75,16 @@ export default async function MarketingPage() {
                   Design professional emails and invite customers to review your business.
                </p>
             </div>
-
-            {/* Right: Plan Badge */}
             <div>
-               {company?.plan === "PRO" ? (
-                  <div className="px-3 py-1 bg-blue-100 text-blue-700 text-sm font-bold rounded-full flex items-center gap-2 border border-blue-200 shadow-sm">
-                     <Sparkles className="h-3.5 w-3.5 fill-blue-500 text-blue-500" /> Pro Active
-                  </div>
-               ) : (
-                  <div className="px-3 py-1 bg-gray-100 text-gray-600 text-sm font-bold rounded-full border border-gray-200 flex items-center gap-2">
-                     Free Plan
-                  </div>
-               )}
+               {getBadge(userPlan)}
             </div>
-
          </div>
 
-         {/* ✅ ADD THIS: Usage Tracker for Free Users */}
+         {/* ✅ PASS DYNAMIC LIMITS TO TRACKER */}
          <EmailUsageTracker
-            plan={company?.plan || "FREE"}
-            usage={company?.emailUsageCount || 0}
-            limit={10}
+            plan={userPlan}
+            usage={usage}
+            limit={config.limit}
          />
 
          {/* SECTION 1: CREATE CAMPAIGN */}
@@ -81,10 +92,16 @@ export default async function MarketingPage() {
             <div className="flex items-center justify-between">
                <h2 className="text-xl font-bold text-[#000032]">Create New Campaign</h2>
             </div>
-            <CreateCampaignForm userEmail={session.user.email || ""} isLimitReached={isLimitReached} />
+            
+            {/* ✅ FIXED: Explicitly pass batchSizeLimit based on the calculated config */}
+            <CreateCampaignForm 
+               userEmail={session.user.email || ""} 
+               isLimitReached={isLimitReached} 
+               batchSizeLimit={config.batchSize} 
+            />
          </div>
 
-         {/* SECTION 2: HISTORY TABLE (Existing code...) */}
+         {/* SECTION 2: HISTORY TABLE */}
          <div className="space-y-4 pt-8 border-t border-gray-200">
             <h2 className="text-xl font-bold text-[#000032] flex items-center gap-2">
                <History className="h-5 w-5" /> Campaign History
@@ -127,19 +144,7 @@ export default async function MarketingPage() {
                               </TableCell>
                               <TableCell className="text-gray-500 text-sm">{formatDate(c.createdAt)}</TableCell>
                               <TableCell className="text-right">
-                                 <CampaignActions campaign={{
-                                    id: c.id,
-                                    name: c.name,
-                                    subject: c.subject,
-                                    content: c.content,
-                                    status: c.status,
-                                    sentCount: c.sentCount,
-                                    createdAt: c.createdAt,
-                                    logoUrl: c.logoUrl,
-                                    bannerUrl: c.bannerUrl,
-                                    recipients: c.recipients,
-                                 }} 
-                                 />
+                                 <CampaignActions campaign={c as any} />
                               </TableCell>
                            </TableRow>
                         ))

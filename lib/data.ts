@@ -472,6 +472,7 @@ export async function getCategoryCompanies(
 }
 
 // 8. Fetch Single Company Profile by SLUG
+// 8. Fetch Single Company Profile by SLUG
 export async function getCompanyBySlug(
   companySlug: string,
   filterTag?: string,
@@ -513,14 +514,10 @@ export async function getCompanyBySlug(
 
     if (!company) return null;
 
-    // --- 1. UPDATED: Keywords Calculation ---
-    // We must split the stored string "topic:sentiment:snippet" to count just the "topic"
+    // --- 1. Keywords Calculation (Unchanged) ---
     const counts: Record<string, number> = {};
-
     company.reviews.forEach((r) => {
       r.keywords.forEach((k) => {
-        // Split by ':' and take the first part (Topic)
-        // This converts "staff:positive:manager" -> "staff"
         const topic = k.split(":")[0].trim().toLowerCase();
         if (topic) {
           counts[topic] = (counts[topic] || 0) + 1;
@@ -544,17 +541,15 @@ export async function getCompanyBySlug(
       }
     });
 
-    // --- 3. UPDATED: Filtering Logic ---
+    // --- 3. Filtering Logic (Unchanged) ---
     let filteredReviews = company.reviews;
 
     if (filterTag) {
       const normalize = (s: string) => s.toLowerCase().trim();
       const searchTag = normalize(filterTag);
-
       filteredReviews = filteredReviews.filter((r) => {
-        // Check if ANY keyword in the review has a matching TOPIC
         return r.keywords.some((k) => {
-          const topic = k.split(":")[0]; // Extract "topic" from "topic:sentiment:snippet"
+          const topic = k.split(":")[0]; 
           return normalize(topic) === searchTag;
         });
       });
@@ -582,7 +577,6 @@ export async function getCompanyBySlug(
     const totalFilteredCount = filteredReviews.length;
     const startIndex = (page - 1) * PAGE_SIZE;
     const endIndex = startIndex + PAGE_SIZE;
-
     const paginatedReviews = filteredReviews.slice(startIndex, endIndex);
 
     return {
@@ -590,6 +584,9 @@ export async function getCompanyBySlug(
       rating: company.rating || 0,
       reviewCount: company.reviewCount || 0,
       logoImage: getOptimizedUrl(company.logoImage, 200),
+      // ✅ FIX: Ensure these fields are never null/undefined for the frontend
+      plan: company.plan || "FREE", 
+      badges: company.badges || [], 
       distribution,
       topKeywords,
 

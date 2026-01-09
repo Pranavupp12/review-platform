@@ -58,8 +58,11 @@ export default async function CompanyProfilePage({ params, searchParams }: PageP
     notFound();
   }
 
-  // 2. Fetch Similar Companies
-  const relatedCompanies = await getSimilarCompanies(company.category.id, company.id);
+  // 2. Fetch Similar Companies (Only fetch if NOT Scale plan, optimization)
+  let relatedCompanies: any[] = [];
+  if (company.plan !== 'SCALE') {
+     relatedCompanies = await getSimilarCompanies(company.category.id, company.id);
+  }
 
   const reviewIds = company.reviews.map(r => r.id);
   const jsonLd = { "@context": "https://schema.org", "@type": "Organization", "name": company.name };
@@ -96,8 +99,9 @@ export default async function CompanyProfilePage({ params, searchParams }: PageP
 
             <PlatformTrustBadge />
 
-            {/* Business Updates Carousel */}
-            {(company as any).updates && (company as any).updates.length > 0 && (
+            {/* Business Updates Carousel - ✅ CONDITIONALLY RENDERED */}
+            {/* Shows only if Plan is NOT FREE and updates exist */}
+            {company.plan !== 'FREE' && (company as any).updates && (company as any).updates.length > 0 && (
               <BusinessUpdatesCarousel
                 updates={(company as any).updates}
                 companyName={company.name}
@@ -112,8 +116,8 @@ export default async function CompanyProfilePage({ params, searchParams }: PageP
             <CompanyAboutSection company={company} />
           </div>
 
-          {/* RIGHT: Contact Sidebar (NOW STICKY) */}
-          <div className="space-y-3 h-fit lg:sticky lg:top-18">
+          {/* RIGHT: Contact Sidebar (Not Sticky) */}
+          <div className="space-y-3 h-fit">
             <ContactDetailsCard
               websiteUrl={company.websiteUrl}
               email={(company as any).contact?.email || (company as any).email}
@@ -131,27 +135,30 @@ export default async function CompanyProfilePage({ params, searchParams }: PageP
               companyName={company.name}
               claimed={company.claimed}
               badges={company.badges}
+              plan={company.plan}
             />
           </div>
         </div>
 
         {/* =========================================
             SECTION 2: SIMILAR COMPANIES (Full Width)
+            (Hidden for SCALE plan)
             ========================================= */}
-        <div className="mb-12 ">
-          <SimilarCompaniesCarousel
-            categoryName={company.category.name}
-            companies={relatedCompanies}
-          />
-        </div>
+        {company.plan !== 'SCALE' && (
+          <div className="mb-12 ">
+            <SimilarCompaniesCarousel
+              categoryName={company.category.name}
+              companies={relatedCompanies}
+            />
+          </div>
+        )}
 
         {/* =========================================
             SECTION 3: REVIEWS & STATS (Grid)
             ========================================= */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8" id="reviews-section">
 
-
-            {/* RIGHT: Stats Sidebar (NOW STICKY) */}
+          {/* RIGHT: Stats Sidebar (STILL STICKY) */}
           <div className="space-y-6 h-fit lg:sticky lg:top-18">
             <RatingDistribution
               distribution={company.distribution}
@@ -246,7 +253,7 @@ export default async function CompanyProfilePage({ params, searchParams }: PageP
                           isLoggedIn={isLoggedIn}
                         />
 
-                        {/* Owner Reply (Added here) */}
+                        {/* Owner Reply */}
                         <ReviewOwnerReply
                           replyText={review.ownerReply}
                           replyDate={review.ownerReplyDate}

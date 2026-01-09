@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Trash2, Loader2, AlertTriangle } from "lucide-react";
-import { deleteBusinessUpdate } from "@/lib/actions";
+import { deleteBusinessUpdate } from "@/lib/updates-actions";
 import { toast } from "sonner";
 import {
   Dialog,

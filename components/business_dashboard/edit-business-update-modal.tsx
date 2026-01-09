@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useActionState } from "react";
 import { useFormStatus } from "react-dom";
-import { updateBusinessUpdate } from "@/lib/actions";
+import { updateBusinessUpdate } from "@/lib/updates-actions";
 import {
   Dialog,
   DialogContent,

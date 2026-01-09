@@ -1,6 +1,6 @@
-// lib/badges.ts
 import { Clock, BadgeCheck, Zap, Heart, Trophy, Star } from "lucide-react";
 
+// 1. Existing Badge Config
 export const BADGE_CONFIG: Record<string, { label: string; description: string; icon: any; color: string; bg: string }> = {
   FAST_REPLY: {
     label: "Fast Responder",
@@ -37,7 +37,6 @@ export const BADGE_CONFIG: Record<string, { label: string; description: string; 
     color: "text-purple-600",
     bg: "bg-purple-50"
   },
-
   MOST_RELEVANT: {
     label: "Most Relevant",
     description: "Highlighted as a top choice for this category.",
@@ -45,6 +44,12 @@ export const BADGE_CONFIG: Record<string, { label: string; description: string; 
     color: "text-white", 
     bg: "bg-[#0ABED6]" 
   }
- 
-  // "Claimed" is handled automatically by the system, so we don't add it here manually
+};
+
+// 2. ✅ NEW: Add Plan Rules Here (Centralized)
+export const PLAN_AUTO_BADGES: Record<string, string[]> = {
+  FREE: [],
+  GROWTH: ['COMMUNITY_FAV', 'VERIFIED_DETAILS'],
+  SCALE: ['COMMUNITY_FAV', 'VERIFIED_DETAILS', 'CATEGORY_LEADER'],
+  PRO: ['COMMUNITY_FAV', 'VERIFIED_DETAILS'], // Fallback for legacy
 };

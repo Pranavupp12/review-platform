@@ -1,9 +1,10 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { notFound, redirect } from "next/navigation";
-import { BarChart3, Sparkles, TrendingUp, Search, AlertTriangle } from "lucide-react";
+import { redirect } from "next/navigation";
+import { BarChart3, Sparkles } from "lucide-react";
 import { CompanyAnalyticsView } from "@/components/admin_components/admin-analytics/company-analytics-view";
-import { FeaturePaywall } from "@/components/business_dashboard/feature-paywall";
+// ✅ Import the helper function
+import { getSearchAnalytics } from "@/lib/get-advance-analytics"; 
 
 export const dynamic = 'force-dynamic';
 
@@ -13,74 +14,42 @@ export default async function BusinessAnalyticsPage() {
 
   const companyId = session.user.companyId;
 
-  // 1. Fetch Company & Reviews
+  // 1. Fetch Company & Features
   const company = await prisma.company.findUnique({
     where: { id: companyId },
-    include: {
-      category: true,
-      reviews: {
-        orderBy: { createdAt: 'desc' },
-        select: { 
-            starRating: true, 
-            createdAt: true, 
-            keywords: true,
-            comment: true 
-        } 
-      }
+    select: {
+      id: true,
+      name: true,
+      logoImage: true,
+      websiteUrl: true,
+      slug: true,
+      rating: true,
+      plan: true,
+      features: true,
     }
   });
 
-  if (!company) return notFound();
+  if (!company) return <div>Company not found</div>;
 
-  // 2. CHECK PLAN STATUS
-  const isPro = company.plan === "PRO"; 
+  // 2. Fetch Reviews
+  const reviews = await prisma.review.findMany({
+    where: { companyId: companyId },
+    orderBy: { createdAt: 'desc' },
+    select: { 
+        id: true,
+        starRating: true, 
+        createdAt: true, 
+        keywords: true,
+        comment: true,
+        user: { select: { name: true, image: true } }
+    }
+  });
 
-  // 3. IF FREE PLAN: SHOW ANALYTICS PAYWALL
-  if (!isPro) {
-    return (
-      <div className="max-w-7xl mx-auto p-6 space-y-8 pb-20">
-         <div className="flex justify-between items-start border-b border-gray-200 pb-5">
-            <div>
-                <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-                    Analytics Report
-                    <BarChart3 className="h-6 w-6 text-gray-400" />
-                </h1>
-                <p className="text-gray-500 mt-1">
-                  Unlock deep insights and grow your business with our Pro tools.
-                </p>
-            </div>
-            <div className="px-3 py-1 bg-gray-100 text-gray-600 text-sm font-bold rounded-full flex items-center gap-2">
-               Free Plan
-            </div>
-         </div>
+  // 3. ✅ UPDATED: Fetch Aggregated Stats using your helper
+  // This now returns the full 30-day aggregation instead of just one random row
+  const searchStats = await getSearchAnalytics(companyId);
 
-         {/* ✅ PAYWALL: ANALYTICS FEATURES ONLY */}
-         <FeaturePaywall 
-            title="Unlock Professional Insights"
-            description="See what customers really think. Upgrade to Pro to reveal hidden trends and sentiment analysis."
-            features={[
-              { 
-                icon: TrendingUp, 
-                text: "6-Month Performance Trends", 
-                colorClass: "text-blue-500" 
-              },
-              { 
-                icon: Search, 
-                text: "AI Keyword & Sentiment Analysis", 
-                colorClass: "text-purple-500" 
-              },
-              { 
-                icon: AlertTriangle, 
-                text: "Negative Feedback Risk Alerts", 
-                colorClass: "text-red-500" 
-              }
-            ]}
-         />
-      </div>
-    );
-  }
-
-  // 4. IF PRO PLAN: SHOW ANALYTICS
+  // 4. Render
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-8 pb-20">
       <div className="flex justify-between items-start">
@@ -93,15 +62,23 @@ export default async function BusinessAnalyticsPage() {
               Performance metrics and sentiment analysis for {company.name}.
             </p>
          </div>
-         <div className="px-3 py-1 bg-blue-100 text-blue-700 text-sm font-bold rounded-full flex items-center gap-2">
-            <Sparkles className="h-3 w-3" /> Pro Plan Active
+         
+         <div className={`px-3 py-1 text-sm font-bold rounded-full flex items-center gap-2 border ${
+             company.plan === 'FREE' 
+               ? "bg-gray-100 text-gray-600 border-gray-200" 
+               : "bg-blue-100 text-blue-700 border-blue-200"
+         }`}>
+            {company.plan !== 'FREE' && <Sparkles className="h-3 w-3" />}
+            {company.plan} Plan Active
          </div>
       </div>
 
       <CompanyAnalyticsView 
          company={company}
-         reviews={company.reviews}
-         isPro={isPro} 
+         reviews={reviews}
+         features={company.features} 
+         searchStats={searchStats} // ✅ Passes the aggregated object
+         userRole={session.user.role}
       />
     </div>
   );

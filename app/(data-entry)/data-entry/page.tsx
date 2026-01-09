@@ -22,7 +22,6 @@ export default async function DataEntryDashboardPage() {
     take: 10 
   });
 
-  const rejectedItems = myRequests.filter(req => req.status === "REJECTED");
 
   return (
     <div className="max-w-xl lg:max-w-6xl mx-auto pt-6 space-y-8 pb-20">
@@ -32,14 +31,6 @@ export default async function DataEntryDashboardPage() {
          <p className="text-gray-500">Welcome back, {session.user.name}. Manage company profiles.</p>
       </div>
 
-      {rejectedItems.length > 0 && (
-         <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-            <h3 className="font-bold text-red-800 flex items-center gap-2 mb-2">
-               <XCircle className="h-5 w-5" /> Attention Required
-            </h3>
-            {/* Render rejected logic here if needed */}
-         </div>
-      )}
 
       {/* ✅ ONLY COMPANIES CARD (Blog card removed) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

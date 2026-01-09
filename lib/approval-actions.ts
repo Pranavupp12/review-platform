@@ -4,7 +4,6 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 
-
 export async function getOriginalData(model: "COMPANY" | "BLOG", id: string) {
   try {
     if (model === "COMPANY") {
@@ -86,18 +85,27 @@ export async function processApproval(changeId: string, decision: "APPROVE" | "R
       delete payload.updatedAt;
 
       if (changeRequest.action === "CREATE") {
-        await prisma.company.create({ data: payload });
+        // Ideally, sanitize CREATE payload too if it has extra fields, 
+        // but for now we focus on the reported UPDATE error.
+        
+        // Remove known non-schema fields to prevent CREATE errors
+        const { contactEmail, phone, socialLinks, ...createData } = payload;
+        await prisma.company.create({ data: createData });
+
       } else if (changeRequest.action === "UPDATE" && changeRequest.targetId) {
-        // ✅ FIX: Destructure 'socialLinks' to REMOVE it from restData
-        // We also remove categoryId/subCategoryId because we handle them manually below
+        
+        // ✅ FIX: Sanitize the payload
+        // Remove 'contactEmail', 'phone', and 'socialLinks' so Prisma doesn't crash
         const { 
             categoryId, 
             subCategoryId, 
-            socialLinks, // <--- REMOVE THIS
+            socialLinks, 
+            contactEmail, // <--- REMOVE THIS
+            phone,        // <--- REMOVE THIS
             ...restData 
         } = payload;
 
-        // 2. Prepare the Prisma Update Object with sanitized data
+        // 2. Prepare the Prisma Update Object
         const updateData: any = { ...restData };
 
         // 3. Connect Category if present
@@ -127,7 +135,7 @@ export async function processApproval(changeId: string, decision: "APPROVE" | "R
     revalidatePath("/admin/data-approval");
     revalidatePath("/admin/companies");
     revalidatePath("/admin/blogs");
-    revalidatePath("/data-entry"); // Updates the staff dashboard status list
+    revalidatePath("/data-entry"); 
 
     return { success: true };
 

@@ -3,11 +3,12 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { PlanToggle } from "@/components/admin_components/plan-toggle";
+// ✅ CHANGED: Import the new Manager instead of the old Toggle
+import { PlanManager } from "@/components/admin_components/plan-manager";
 import { PaginationControls } from "@/components/shared/pagination-controls";
 import { PlanFilters } from "@/components/admin_components/page-filters/plan-filters";
 import { Building2, Inbox } from "lucide-react"; 
-import { Prisma } from '@prisma/client';
+import { Prisma, Plan } from '@prisma/client';
 
 export const metadata = { title: 'Manage Plans - Admin' };
 
@@ -19,6 +20,21 @@ function formatDate(date: Date | null) {
     month: "2-digit",
     year: "numeric",
   });
+}
+
+// Helper for Badge Colors based on Plan
+function getPlanBadgeColor(plan: Plan) {
+  switch (plan) {
+    case "GROWTH":
+      return "bg-blue-100 text-blue-700 hover:bg-blue-200 border-blue-200";
+    case "SCALE":
+      return "bg-purple-100 text-purple-700 hover:bg-purple-200 border-purple-200";
+    case "CUSTOM":
+      return "bg-amber-100 text-amber-700 hover:bg-amber-200 border-amber-200";
+    case "FREE":
+    default:
+      return "bg-gray-100 text-gray-600 hover:bg-gray-200 border-gray-200";
+  }
 }
 
 type PageProps = {
@@ -52,10 +68,11 @@ export default async function ManagePlansPage({ searchParams }: PageProps) {
     where.name = { contains: query, mode: 'insensitive' };
   }
 
-  if (plan === 'PRO') {
-    where.plan = 'PRO';
-  } else if (plan === 'FREE') {
-    where.plan = { not: 'PRO' };
+  // ✅ UPDATED: Handle dynamic plan filtering
+  // Assuming your PlanFilters component sends "GROWTH", "SCALE", etc. as query params
+  if (plan && plan !== "ALL") {
+    // We cast to Plan to match the Prisma Enum type
+    where.plan = plan as Plan;
   }
 
   const [companies, totalCount] = await Promise.all([
@@ -64,7 +81,15 @@ export default async function ManagePlansPage({ searchParams }: PageProps) {
       orderBy: { createdAt: "desc" },
       skip: skip,
       take: pageSize,
-      select: { id: true, name: true, plan: true, createdAt: true, slug: true }
+      // ✅ UPDATED: Select 'features' so we can pass them to the manager
+      select: { 
+        id: true, 
+        name: true, 
+        plan: true, 
+        features: true, // <--- Critical for the new logic
+        createdAt: true, 
+        slug: true 
+      }
     }),
     prisma.company.count({ where })
   ]);
@@ -72,7 +97,6 @@ export default async function ManagePlansPage({ searchParams }: PageProps) {
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-6">
       <div className="flex justify-between items-center">
-         {/* ✅ Removed Sparkles Icon */}
          <h1 className="text-2xl font-bold flex items-center gap-2">
             Manage Company Plans
          </h1>
@@ -100,7 +124,7 @@ export default async function ManagePlansPage({ searchParams }: PageProps) {
                   <TableHead>Company Name</TableHead>
                   <TableHead>Joined Date</TableHead>
                   <TableHead>Current Plan</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
+                  <TableHead className="text-right">Manage Features</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -116,16 +140,20 @@ export default async function ManagePlansPage({ searchParams }: PageProps) {
                       </div>
                     </TableCell>
                     <TableCell className="text-gray-500">
-                        {/* ✅ Used helper function here */}
                         {formatDate(company.createdAt)}
                     </TableCell>
                     <TableCell>
-                      <Badge className={company.plan === "PRO" ? "bg-blue-100 text-blue-700 hover:bg-blue-100" : "bg-gray-100 text-gray-600 hover:bg-gray-100"}>
+                      <Badge className={`${getPlanBadgeColor(company.plan)} border`}>
                           {company.plan}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <PlanToggle companyId={company.id} currentPlan={company.plan} />
+                      {/* ✅ UPDATED: New PlanManager Component */}
+                      <PlanManager 
+                        companyId={company.id} 
+                        currentPlan={company.plan} 
+                        currentFeatures={company.features}
+                      />
                     </TableCell>
                   </TableRow>
                 ))}

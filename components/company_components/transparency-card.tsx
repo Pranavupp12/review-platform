@@ -1,7 +1,7 @@
 "use client";
 
-import { ShieldCheck, ShieldAlert, Info } from "lucide-react"; 
-import { BADGE_CONFIG } from "@/lib/badges";
+import { Info } from "lucide-react"; 
+import { BADGE_CONFIG, PLAN_AUTO_BADGES } from "@/lib/badges"; 
 import {
   Tooltip,
   TooltipContent,
@@ -11,14 +11,38 @@ import {
 
 interface TransparencyCardProps {
   companyName: string;
-  claimed: boolean;
+  claimed?: boolean;
   badges: string[];
+  plan?: string;
 }
 
-export function TransparencyCard({ companyName, claimed, badges = [] }: TransparencyCardProps) {
+export function TransparencyCard({ companyName, badges = [], plan = "FREE" }: TransparencyCardProps) {
   
-  // ✅ FILTER: Exclude 'MOST_RELEVANT' from the list
-  const visibleBadges = badges.filter(badgeId => badgeId !== "MOST_RELEVANT");
+  const normalizedPlan = plan?.toUpperCase() || "FREE";
+
+  // 1. Get Automatic Badges for the CURRENT Plan
+  const currentPlanBadges = PLAN_AUTO_BADGES[normalizedPlan] || [];
+
+  // 2. Identify ALL Possible Plan-Exclusive Badges 
+  // (We gather all badges that ANY plan could force-add, so we can strip them out from the DB list)
+  const allPlanBadges = new Set(
+    Object.values(PLAN_AUTO_BADGES).flat()
+  );
+
+  // 3. Filter the DB List
+  // Remove any badge that belongs to the "Plan System" (e.g., CATEGORY_LEADER)
+  // This prevents a 'Growth' user from showing 'Category Leader' just because it was stuck in their DB
+  const manualBadges = badges.filter(b => !allPlanBadges.has(b));
+
+  // 4. Merge: (Clean Manual Badges) + (Correct Current Plan Badges)
+  const combinedBadges = Array.from(new Set([...manualBadges, ...currentPlanBadges]));
+
+  // 5. Filter out 'MOST_RELEVANT' (as per request)
+  const visibleBadges = combinedBadges.filter(badgeId => badgeId !== "MOST_RELEVANT");
+
+  if (visibleBadges.length === 0) {
+    return null;
+  }
 
   return (
     <div className="bg-white p-6 border border-gray-200 space-y-5">
@@ -30,7 +54,7 @@ export function TransparencyCard({ companyName, claimed, badges = [] }: Transpar
             </TooltipTrigger>
             <TooltipContent className="max-w-[280px] bg-gray-900 text-white border-gray-800" side="top" align="start">
               <p className="text-xs leading-relaxed">
-                This card displays the company's verification status and special badges awarded based on their performance, statistics, and community relevancy.
+                This card displays special badges awarded to {companyName} based on their performance and verification status.
               </p>
             </TooltipContent>
           </Tooltip>
@@ -39,21 +63,6 @@ export function TransparencyCard({ companyName, claimed, badges = [] }: Transpar
       </h3>
       
       <div className="space-y-5">
-        
-        {/* Claimed Status Block */}
-        <div className="flex gap-3 items-start">
-          <div className={`p-2 rounded-full shrink-0 ${claimed ? 'bg-emerald-50' : 'bg-gray-100'}`}>
-            {claimed ? <ShieldCheck className="h-5 w-5 text-emerald-600" /> : <ShieldAlert className="h-5 w-5 text-gray-500" />}
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-900">{claimed ? "Claimed Profile" : "Unclaimed Profile"}</p>
-            <p className="text-xs text-gray-500">
-              {claimed ? `${companyName} has verified ownership.` : `${companyName} hasn't verified ownership.`}
-            </p>
-          </div>
-        </div>
-
-        {/* ✅ Render Filtered Badges */}
         {visibleBadges.map((badgeId) => {
            const config = BADGE_CONFIG[badgeId];
            if (!config) return null;
@@ -71,7 +80,6 @@ export function TransparencyCard({ companyName, claimed, badges = [] }: Transpar
              </div>
            );
         })}
-
       </div>
     </div>
   );

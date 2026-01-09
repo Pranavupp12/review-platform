@@ -213,6 +213,7 @@ export default async function AdminCompaniesPage({ searchParams }: PageProps) {
                           companyId={company.id}
                           companyName={company.name}
                           currentBadges={company.badges || []}
+                          plan={company.plan}
                         />
 
                         <CompanyDetailsModal company={company} />

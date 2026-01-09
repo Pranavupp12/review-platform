@@ -41,7 +41,9 @@ enum ClaimStatus {
 
 enum Plan {
   FREE
-  PRO
+  GROWTH
+  SCALE
+  CUSTOM
 }
 
 enum CampaignStatus {
@@ -144,6 +146,7 @@ model Company {
   isFrozen          Boolean   @default(false)
   claimedAt         DateTime?
   leads             Lead[]
+  features          String[]    @default([])
 
   domainVerified       DateTime?  
   domainVerifyToken    String?    
