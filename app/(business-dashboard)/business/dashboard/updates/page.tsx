@@ -7,8 +7,9 @@ import { DeleteUpdateButton } from "@/components/business_dashboard/delete-updat
 import { FeaturePaywall } from "@/components/business_dashboard/feature-paywall";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { format, startOfMonth, endOfMonth } from "date-fns"; // ✅ Import date helpers
+import { format, startOfMonth, endOfMonth } from "date-fns"; 
 import { ExternalLink, Newspaper, Globe, Sparkles, Rss } from "lucide-react";
+import { getCompanyFeatures } from "@/lib/plan-config";
 
 export default async function BusinessUpdatesPage() {
   const session = await auth();
@@ -17,7 +18,9 @@ export default async function BusinessUpdatesPage() {
   // 1. FIND COMPANY & PLAN
   const claim = await prisma.businessClaim.findFirst({
     where: { userId: session.user.id },
-    include: { company: true }
+    include: { 
+        company: true // This fetches 'plan' AND the new override fields (customUpdateLimit, etc.)
+    }
   });
 
   if (!claim || !claim.company) {
@@ -25,19 +28,12 @@ export default async function BusinessUpdatesPage() {
   }
 
   const companyId = claim.company.id;
-  // Default to FREE if plan is missing/null
   const plan = claim.company.plan || "FREE"; 
 
-  // 2. DEFINE LIMITS
-  const LIMITS: Record<string, number> = {
-    FREE: 0,
-    GROWTH: 10,
-    SCALE: 20,
-    PRO: 20, // Fallback for legacy Pro
-    CUSTOM: Infinity
-  };
-
-  const monthlyLimit = LIMITS[plan] || 0;
+  // 2. ✅ GET DYNAMIC FEATURES (Replaces hardcoded LIMITS)
+  // This calculates the limit based on Plan Default + Any Admin Overrides
+  const features = getCompanyFeatures(claim.company);
+  const monthlyLimit = features.updateLimit;
 
   // 3. CALCULATE USAGE (Current Month Only)
   const now = new Date();
@@ -54,8 +50,10 @@ export default async function BusinessUpdatesPage() {
   // Check if limit is reached (unless infinite)
   const isLimitReached = monthlyLimit !== Infinity && usageCount >= monthlyLimit;
 
-  // 4. LOCK PAGE FOR FREE USERS (Limit is 0)
-  if (plan === "FREE") {
+  // 4. LOCK PAGE FOR USERS WITH 0 LIMIT (Default for FREE)
+  // Logic Updated: We check 'monthlyLimit === 0' instead of 'plan === FREE'.
+  // This is better because if you manually give a Free user a limit of 5, they can now access the page!
+  if (monthlyLimit === 0) {
     return (
       <div className="space-y-6 p-6">
         <div className="border-b border-gray-200 pb-4">
@@ -77,7 +75,7 @@ export default async function BusinessUpdatesPage() {
   // 5. FETCH UPDATES (Sort by CreatedAt to close loophole)
   const updates = await prisma.businessUpdate.findMany({
     where: { companyId: companyId },
-    orderBy: { createdAt: "desc" }, // ✅ Critical: Keeps old posts at the bottom even if edited
+    orderBy: { createdAt: "desc" }, 
   });
 
   return (

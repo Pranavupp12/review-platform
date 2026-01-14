@@ -13,7 +13,7 @@ const model = genAI.getGenerativeModel({
 });
 
 const groq = new Groq({
-    apiKey: process.env.GROQ_API_KEY 
+  apiKey: process.env.GROQ_API_KEY,
 });
 
 const CATEGORIES_LIST =
@@ -30,7 +30,7 @@ const CATEGORY_SYNONYMS: Record<string, string> = {
   medical: "health",
   dental: "health",
   dentist: "health",
-  
+
   // Restaurants & Hospitality
   food: "restaurants",
   eat: "restaurants",
@@ -69,7 +69,7 @@ const CATEGORY_SYNONYMS: Record<string, string> = {
   tech: "software",
   dev: "software",
   tool: "software",
-  developer:"software",
+  developer: "software",
 
   // Automotive
   car: "automotive",
@@ -106,7 +106,7 @@ const CATEGORY_SYNONYMS: Record<string, string> = {
   finance: "bank",
   loan: "bank",
   credit: "bank",
-  
+
   // Legal
   lawyer: "legal",
   attorney: "legal",
@@ -115,37 +115,46 @@ const CATEGORY_SYNONYMS: Record<string, string> = {
 
 // This ensures the AI always knows about your latest database categories
 async function getTaxonomyForAI() {
-    try {
-        const [categories, subCategories] = await Promise.all([
-            prisma.category.findMany({ select: { name: true } }),
-            prisma.subCategory.findMany({ select: { name: true } })
-        ]);
+  try {
+    const [categories, subCategories] = await Promise.all([
+      prisma.category.findMany({ select: { name: true } }),
+      prisma.subCategory.findMany({ select: { name: true } }),
+    ]);
 
-        return {
-            categoriesList: categories.map(c => c.name).join(", "),
-            subCategoriesList: subCategories.map(s => s.name).join(", ")
-        };
-    } catch (error) {
-        console.error("Failed to fetch taxonomy:", error);
-        // Fallback to basic lists if DB fails, to prevent crash
-        return {
-            categoriesList: "Software, Health, Retail, Finance, Automotive, Education, Travel",
-            subCategoriesList: "Web Dev, Dentists, Gyms, Restaurants"
-        };
-    }
+    return {
+      categoriesList: categories.map((c) => c.name).join(", "),
+      subCategoriesList: subCategories.map((s) => s.name).join(", "),
+    };
+  } catch (error) {
+    console.error("Failed to fetch taxonomy:", error);
+    // Fallback to basic lists if DB fails, to prevent crash
+    return {
+      categoriesList:
+        "Software, Health, Retail, Finance, Automotive, Education, Travel",
+      subCategoriesList: "Web Dev, Dentists, Gyms, Restaurants",
+    };
+  }
 }
 
 // --- 3. SMART SEARCH (Data Fetcher) ---
-export async function smartSearch(userQuery: string, locationFilter?: string, userRegion?: string) {
-    if (!userQuery) return [];
+export async function smartSearch(
+  userQuery: string,
+  locationFilter?: string,
+  userRegion?: string
+) {
+  if (!userQuery) return [];
 
-    console.log(`🔍 Analyzing: "${userQuery}" | Loc: "${locationFilter || 'Global'}" | Region: "${userRegion}"`);
+  console.log(
+    `🔍 Analyzing: "${userQuery}" | Loc: "${
+      locationFilter || "Global"
+    }" | Region: "${userRegion}"`
+  );
 
-    // Fetch dynamic lists
-    const { categoriesList } = await getTaxonomyForAI();
+  // Fetch dynamic lists
+  const { categoriesList } = await getTaxonomyForAI();
 
-    // Define Prompt
-    const prompt = `
+  // Define Prompt
+  const prompt = `
       Analyze the user's query: "${userQuery}".
       
       Extract search filters.
@@ -164,170 +173,219 @@ export async function smartSearch(userQuery: string, locationFilter?: string, us
       }
     `;
 
-    let aiParams;
+  let aiParams;
 
+  try {
+    const result = await model.generateContent(prompt);
+    const text = result.response.text();
+    aiParams = JSON.parse(text.replace(/```json|```/g, "").trim());
+  } catch (primaryError) {
+    console.warn(
+      "⚠️ SmartSearch: Gemini failed, switching to Groq:",
+      primaryError
+    );
     try {
-        const result = await model.generateContent(prompt);
-        const text = result.response.text();
-        aiParams = JSON.parse(text.replace(/```json|```/g, "").trim());
-    } catch (primaryError) {
-        console.warn("⚠️ SmartSearch: Gemini failed, switching to Groq:", primaryError);
-        try {
-            const completion = await groq.chat.completions.create({
-                messages: [
-                    { role: "system", content: "You are a JSON-only API. Output strict JSON." },
-                    { role: "user", content: prompt }
-                ],
-                model: "llama-3.1-8b-instant", 
-                temperature: 0,
-                response_format: { type: "json_object" }
-            });
-            const text = completion.choices[0]?.message?.content || "{}";
-            aiParams = JSON.parse(text);
-        } catch (fallbackError) {
-            console.error("❌ SmartSearch: Both models failed.", fallbackError);
-            aiParams = { keyword: userQuery, sortBy: "relevance" };
-        }
+      const completion = await groq.chat.completions.create({
+        messages: [
+          {
+            role: "system",
+            content: "You are a JSON-only API. Output strict JSON.",
+          },
+          { role: "user", content: prompt },
+        ],
+        model: "llama-3.1-8b-instant",
+        temperature: 0,
+        response_format: { type: "json_object" },
+      });
+      const text = completion.choices[0]?.message?.content || "{}";
+      aiParams = JSON.parse(text);
+    } catch (fallbackError) {
+      console.error("❌ SmartSearch: Both models failed.", fallbackError);
+      aiParams = { keyword: userQuery, sortBy: "relevance" };
     }
-    
-    // --- Build Database Query ---
-    try {
-        const whereClause: any = { AND: [] };
+  }
 
-        // Location Logic
-        const finalLocation = (locationFilter && locationFilter !== 'Global') 
-            ? locationFilter 
-            : aiParams?.extractedLocation;
+  // --- Build Database Query ---
+  try {
+    const whereClause: any = { AND: [] };
 
-        if (finalLocation) {
-            whereClause.AND.push({
-                OR: [
-                    { city: { contains: finalLocation, mode: 'insensitive' } },
-                    { country: { contains: finalLocation, mode: 'insensitive' } },
-                    { address: { contains: finalLocation, mode: 'insensitive' } }
-                ]
-            });
-        }
+    // Location Logic
+    const finalLocation =
+      locationFilter && locationFilter !== "Global"
+        ? locationFilter
+        : aiParams?.extractedLocation;
 
-        // Keyword/Category Logic
-        const textFilters: any = { OR: [] };
-
-        if (aiParams?.keyword) {
-            textFilters.OR.push({ name: { contains: aiParams.keyword, mode: 'insensitive' } });
-            textFilters.OR.push({ briefIntroduction: { contains: aiParams.keyword, mode: 'insensitive' } });
-        }
-        if (aiParams?.category) {
-            textFilters.OR.push({ category: { name: { contains: aiParams.category, mode: 'insensitive' } } });
-        }
-        if (aiParams?.subCategoryKeyword) {
-            textFilters.OR.push({ subCategory: { name: { contains: aiParams.subCategoryKeyword, mode: 'insensitive' } } });
-            textFilters.OR.push({ keywords: { has: aiParams.subCategoryKeyword.toLowerCase() } });
-        }
-
-        if (textFilters.OR.length === 0) {
-            textFilters.OR.push({ name: { contains: userQuery, mode: 'insensitive' } });
-            textFilters.OR.push({ keywords: { has: userQuery.toLowerCase() } });
-        }
-
-        whereClause.AND.push(textFilters);
-
-        // Execute Query
-        const companies = await prisma.company.findMany({
-            where: whereClause,
-            include: { reviews: true },
-            orderBy: aiParams?.sortBy === 'rating' ? { reviews: { _count: 'desc' } } : { name: 'asc' }
-        });
-
-        // ✅ NEW: LOG IMPRESSIONS FOR FOUND COMPANIES
-        const today = new Date();
-        today.setHours(0, 0, 0, 0); 
-
-        // Non-blocking logging
-        (async () => {
-            try {
-                const statUpdates = companies.map(company => {
-                    return prisma.searchQueryStat.upsert({
-                        where: {
-                            // ✅ FIXED: Updated unique key to match new schema
-                            companyId_query_location_userRegion_date: {
-                                companyId: company.id,
-                                query: userQuery.toLowerCase(),
-                                location: finalLocation || "Global",
-                                userRegion: userRegion || "unknown", // Must include this in the unique constraint check
-                                date: today
-                            }
-                        },
-                        update: {
-                            impressions: { increment: 1 },
-                        },
-                        create: {
-                            companyId: company.id,
-                            query: userQuery.toLowerCase(),
-                            location: finalLocation || "Global",
-                            date: today,
-                            impressions: 1,
-                            clicks: 0,
-                            userRegion: userRegion || "unknown" 
-                        }
-                    });
-                });
-                await prisma.$transaction(statUpdates);
-            } catch (err) {
-                console.error("Failed to log search stats:", err);
-            }
-        })();
-
-        // Transform Data
-        return companies.map((company) => {
-            const totalRating = company.reviews.reduce((acc, r) => acc + r.starRating, 0);
-            const avgRating = company.reviews.length > 0 ? totalRating / company.reviews.length : 0;
-            return {
-                id: company.id,
-                slug: company.slug,
-                name: company.name,
-                logoImage: company.logoImage,
-                websiteUrl: company.websiteUrl,
-                address: company.address,
-                city: company.city,
-                country: company.country,
-                claimed: company.claimed,
-                rating: avgRating,
-                reviewCount: company.reviews.length,
-            };
-        });
-
-    } catch (dbError) {
-        console.error("SmartSearch DB Error:", dbError);
-        return [];
+    if (finalLocation) {
+      whereClause.AND.push({
+        OR: [
+          { city: { contains: finalLocation, mode: "insensitive" } },
+          { country: { contains: finalLocation, mode: "insensitive" } },
+          { address: { contains: finalLocation, mode: "insensitive" } },
+        ],
+      });
     }
+
+    // Keyword/Category Logic
+    const textFilters: any = { OR: [] };
+
+    if (aiParams?.keyword) {
+      textFilters.OR.push({
+        name: { contains: aiParams.keyword, mode: "insensitive" },
+      });
+      textFilters.OR.push({
+        briefIntroduction: { contains: aiParams.keyword, mode: "insensitive" },
+      });
+    }
+    if (aiParams?.category) {
+      textFilters.OR.push({
+        category: {
+          name: { contains: aiParams.category, mode: "insensitive" },
+        },
+      });
+    }
+    if (aiParams?.subCategoryKeyword) {
+      textFilters.OR.push({
+        subCategory: {
+          name: { contains: aiParams.subCategoryKeyword, mode: "insensitive" },
+        },
+      });
+      textFilters.OR.push({
+        keywords: { has: aiParams.subCategoryKeyword.toLowerCase() },
+      });
+    }
+
+    if (textFilters.OR.length === 0) {
+      textFilters.OR.push({
+        name: { contains: userQuery, mode: "insensitive" },
+      });
+      textFilters.OR.push({ keywords: { has: userQuery.toLowerCase() } });
+    }
+
+    whereClause.AND.push(textFilters);
+
+    // Execute Query
+    const companies = await prisma.company.findMany({
+      where: whereClause,
+      include: { reviews: true },
+      orderBy:
+        aiParams?.sortBy === "rating"
+          ? { reviews: { _count: "desc" } }
+          : { name: "asc" },
+    });
+
+    // ✅ NEW: LOG IMPRESSIONS FOR FOUND COMPANIES
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Non-blocking logging
+    (async () => {
+      try {
+        const statUpdates = companies.map((company) => {
+          return prisma.searchQueryStat.upsert({
+            where: {
+              // ✅ FIXED: Updated unique key to match new schema
+              companyId_query_location_userRegion_date: {
+                companyId: company.id,
+                query: userQuery.toLowerCase(),
+                location: finalLocation || "Global",
+                userRegion: userRegion || "unknown", // Must include this in the unique constraint check
+                date: today,
+              },
+            },
+            update: {
+              impressions: { increment: 1 },
+            },
+            create: {
+              companyId: company.id,
+              query: userQuery.toLowerCase(),
+              location: finalLocation || "Global",
+              date: today,
+              impressions: 1,
+              clicks: 0,
+              userRegion: userRegion || "unknown",
+            },
+          });
+        });
+        await prisma.$transaction(statUpdates);
+      } catch (err) {
+        console.error("Failed to log search stats:", err);
+      }
+    })();
+
+    // Transform Data
+    return companies.map((company) => {
+      const totalRating = company.reviews.reduce(
+        (acc, r) => acc + r.starRating,
+        0
+      );
+      const avgRating =
+        company.reviews.length > 0 ? totalRating / company.reviews.length : 0;
+      return {
+        id: company.id,
+        slug: company.slug,
+        name: company.name,
+        logoImage: company.logoImage,
+        websiteUrl: company.websiteUrl,
+        address: company.address,
+        city: company.city,
+        country: company.country,
+        claimed: company.claimed,
+        rating: avgRating,
+        reviewCount: company.reviews.length,
+      };
+    });
+  } catch (dbError) {
+    console.error("SmartSearch DB Error:", dbError);
+    return [];
+  }
 }
 
 // --- 4. IDENTIFY SEARCH INTENT (Traffic Controller) ---
 interface IntentParams {
   query: string;
-  location?: string; 
+  location?: string;
   userRegion?: string;
 }
 
-export async function identifySearchIntent({ query, location, userRegion }: IntentParams) {
+export async function identifySearchIntent({
+  query,
+  location, // This is the value from the Dropdown
+  userRegion,
+}: IntentParams) {
   if (!query) return null;
 
   const lowerQuery = query.toLowerCase();
 
-  // Helper to construct URLs consistently
-  const buildUrl = (baseUrl: string, sortBy?: string) => {
+  // ✅ HELPER UPDATE: Accepts an AI-extracted location as a fallback
+  const buildUrl = (baseUrl: string, sortBy?: string, aiExtractedLoc?: string | null) => {
     const urlParams = new URLSearchParams();
-    if (query) urlParams.set("q", query);
-    if (location && location !== "Global") urlParams.set("loc", location);
-    if (userRegion) urlParams.set("region", userRegion); // Pass region to next page
-    if (sortBy) urlParams.set("sort", sortBy);
     
+    // 1. Pass the original query (so the next page can highlight it/re-process if needed)
+    if (query) urlParams.set("q", query);
+
+    // 2. LOCATION LOGIC:
+    // Priority 1: Explicit Dropdown Selection
+    // Priority 2: AI Extracted Location from text (e.g., "in Delhi")
+    // Priority 3: User Region (only passed as 'region', not 'loc')
+    
+    if (location && location !== "Global") {
+        urlParams.set("loc", location);
+    } else if (aiExtractedLoc) {
+        urlParams.set("loc", aiExtractedLoc);
+    }
+
+    if (userRegion) urlParams.set("region", userRegion); 
+    if (sortBy) urlParams.set("sort", sortBy);
+
     const queryString = urlParams.toString();
     return queryString ? `${baseUrl}?${queryString}` : baseUrl;
   };
 
   try {
-    // 1. EXACT DB CHECKS
+    // 1. EXACT DB CHECKS (Company, SubCategory, Category)
+    // Note: Exact matches often imply navigation, but we might miss location context here 
+    // if we don't pass it. 
+    
     const exactCompany = await prisma.company.findFirst({
       where: {
         OR: [
@@ -336,42 +394,34 @@ export async function identifySearchIntent({ query, location, userRegion }: Inte
         ],
       },
     });
+    // For specific companies, we usually just go to the profile
     if (exactCompany) return `/company/${exactCompany.slug}`;
 
+    // For Exact Categories/Subcategories, we still want to attach location if it exists in dropdown
     const exactSub = await prisma.subCategory.findFirst({
       where: { name: { equals: query, mode: "insensitive" } },
       include: { category: true },
     });
-    if (exactSub) return buildUrl(`/categories/${exactSub.category.slug}/${exactSub.slug}`);
+    if (exactSub)
+      return buildUrl(`/categories/${exactSub.category.slug}/${exactSub.slug}`);
 
     const exactCategory = await prisma.category.findFirst({
       where: { name: { equals: query, mode: "insensitive" } },
     });
     if (exactCategory) return buildUrl(`/categories/${exactCategory.slug}`);
 
-    // 2. BROAD CATEGORY MATCH
-    const allCategories = await prisma.category.findMany({
-      select: { name: true, slug: true }
-    });
-    allCategories.sort((a, b) => b.name.length - a.name.length);
-
-    const matchedCategory = allCategories.find(cat => 
-      lowerQuery.includes(cat.name.toLowerCase())
-    );
-
-    if (matchedCategory) {
-      const isBest = lowerQuery.includes("best") || lowerQuery.includes("top");
-      const sortBy = isBest ? "rating_high" : undefined;
-      return buildUrl(`/categories/${matchedCategory.slug}`, sortBy);
-    }
-
-    // 3. HYBRID AI INTENT CHECK
+    // 2. HYBRID AI INTENT CHECK
     const { categoriesList, subCategoriesList } = await getTaxonomyForAI();
 
+    // ✅ PROMPT UPDATE: Asked to extract location
     const prompt = `
       Analyze search query: "${query}".
-      Determine navigation intent.
       
+      Tasks:
+      1. Determine navigation intent (Category, SubCategory, or Company).
+      2. Extract Location if present in text (e.g. "in Delhi", "near Mumbai").
+      3. Determine sorting intent.
+
       Database Context:
       - Categories: ${categoriesList}
       - SubCategories: ${subCategoriesList}
@@ -379,13 +429,15 @@ export async function identifySearchIntent({ query, location, userRegion }: Inte
       Rules:
       - If user implies quality ("best", "top"), set sortBy="rating_high".
       - If user implies recency ("new", "latest"), set sortBy="newest".
+      - Extract city/state names into 'extractedLocation'.
       
-      Return JSON:
+      Return Strict JSON:
       {
         "isNavigation": boolean,
         "targetCategory": string | null, 
         "targetSubCategory": string | null,
         "targetCompany": string | null,
+        "extractedLocation": string | null, 
         "sortBy": "rating_high" | "rating_low" | "newest" | null
       }
     `;
@@ -393,55 +445,87 @@ export async function identifySearchIntent({ query, location, userRegion }: Inte
     let intent;
 
     try {
-        const result = await model.generateContent(prompt);
-        const text = result.response.text();
-        intent = JSON.parse(text.replace(/```json|```/g, "").trim());
+      const result = await model.generateContent(prompt);
+      const text = result.response.text();
+      intent = JSON.parse(text.replace(/```json|```/g, "").trim());
     } catch (primaryError) {
-        console.warn("⚠️ Intent Check: Gemini failed, switching to Groq:", primaryError);
-        try {
-            const completion = await groq.chat.completions.create({
-                messages: [
-                    { role: "system", content: "You are a JSON-only API. Output strict JSON." },
-                    { role: "user", content: prompt }
-                ],
-                model: "llama-3.1-8b-instant",
-                temperature: 0,
-                response_format: { type: "json_object" }
-            });
-            const text = completion.choices[0]?.message?.content || "{}";
-            intent = JSON.parse(text);
-        } catch (fallbackError) {
-            console.error("❌ Intent Check: Both models failed.", fallbackError);
-            return null;
-        }
+      console.warn("⚠️ Intent Check: Gemini failed, switching to Groq:", primaryError);
+      try {
+        const completion = await groq.chat.completions.create({
+          messages: [
+            { role: "system", content: "You are a JSON-only API. Output strict JSON." },
+            { role: "user", content: prompt },
+          ],
+          model: "llama-3.1-8b-instant",
+          temperature: 0,
+          response_format: { type: "json_object" },
+        });
+        const text = completion.choices[0]?.message?.content || "{}";
+        intent = JSON.parse(text);
+      } catch (fallbackError) {
+        console.error("❌ Intent Check: Both models failed.", fallbackError);
+        return null;
+      }
     }
 
-    // 4. Process AI Result
+    // 3. Process AI Result
     if (intent?.isNavigation) {
+      
+      // A. Target Company
       if (intent.targetCompany) {
         const company = await prisma.company.findFirst({
-          where: { name: { contains: intent.targetCompany, mode: "insensitive" } },
+          where: {
+            name: { contains: intent.targetCompany, mode: "insensitive" },
+          },
         });
         if (company) return `/company/${company.slug}`;
       }
 
+      // B. Target SubCategory
       if (intent.targetSubCategory) {
         const sub = await prisma.subCategory.findFirst({
-          where: { name: { contains: intent.targetSubCategory, mode: "insensitive" } },
+          where: {
+            name: { contains: intent.targetSubCategory, mode: "insensitive" },
+          },
           include: { category: true },
         });
-        if (sub) return buildUrl(`/categories/${sub.category.slug}/${sub.slug}`, intent.sortBy);
+        if (sub)
+          return buildUrl(
+            `/categories/${sub.category.slug}/${sub.slug}`,
+            intent.sortBy,
+            intent.extractedLocation // ✅ Pass extracted location
+          );
       }
 
+      // C. Target Category
       if (intent.targetCategory) {
         const cat = await prisma.category.findFirst({
-          where: { name: { contains: intent.targetCategory, mode: "insensitive" } },
+          where: {
+            name: { contains: intent.targetCategory, mode: "insensitive" },
+          },
         });
-        if (cat) return buildUrl(`/categories/${cat.slug}`, intent.sortBy);
+        if (cat) 
+          return buildUrl(
+            `/categories/${cat.slug}`, 
+            intent.sortBy,
+            intent.extractedLocation // ✅ Pass extracted location
+          );
       }
     }
+    
+    // 4. Fallback for "Search Only" intent (e.g. "Software companies in Delhi" but no specific match found via AI)
+    // If the AI found a location but no specific category navigation, you might still want to return 
+    // a general search URL with that location.
+    if (!intent?.isNavigation && intent?.extractedLocation) {
+         // This is optional: redirect to general search with the extracted location
+         const urlParams = new URLSearchParams();
+         urlParams.set("q", query);
+         urlParams.set("loc", intent.extractedLocation);
+         if (userRegion) urlParams.set("region", userRegion);
+         return `/search?${urlParams.toString()}`;
+    }
 
-    return null; 
+    return null;
   } catch (error) {
     console.error("Intent Error:", error);
     return null;
@@ -451,11 +535,13 @@ export async function identifySearchIntent({ query, location, userRegion }: Inte
 // Define the type for better type safety
 export type ReviewTopic = {
   topic: string;
-  sentiment: 'positive' | 'negative' | 'neutral';
+  sentiment: "positive" | "negative" | "neutral";
   snippet: string; // ✅ NEW FIELD
 };
 
-export async function generateReviewKeywords(reviewText: string): Promise<string[]> {
+export async function generateReviewKeywords(
+  reviewText: string
+): Promise<string[]> {
   // 1. Fail fast for short text
   if (!reviewText || reviewText.length < 10) return [];
 
@@ -507,8 +593,8 @@ export async function generateReviewKeywords(reviewText: string): Promise<string
 
     // 5. Transform to "topic:sentiment:snippet" format for the DB
     const formattedKeywords: string[] = rawData
-      .filter(item => item.topic && item.sentiment && item.snippet)
-      .map(item => {
+      .filter((item) => item.topic && item.sentiment && item.snippet)
+      .map((item) => {
         // Clean snippet to ensure it matches specific highlighting rules if needed
         const cleanSnippet = item.snippet.trim();
         const cleanTopic = item.topic.toLowerCase();
@@ -520,7 +606,6 @@ export async function generateReviewKeywords(reviewText: string): Promise<string
 
     // Deduplicate strings
     return Array.from(new Set(formattedKeywords));
-
   } catch (error) {
     console.error("AI Keyword Extraction Failed:", error);
     return [];
@@ -529,14 +614,15 @@ export async function generateReviewKeywords(reviewText: string): Promise<string
 
 //Generate Dashboard Insights ---
 export async function generateCompanyInsight(
-  reviews: any[], 
-  metrics?: { 
-    trustScore: number; 
-    nss: number; 
-    totalReviews: number; 
-    searchImpressions: number; 
-    ctr: number; 
-    adValue: string; 
+  reviews: any[],
+  metrics?: {
+    trustScore: number;
+    nss: number;
+    totalReviews: number;
+    searchImpressions: number;
+    ctr: number;
+    adValue: string;
+    adClicks: number;
   },
   topQueries?: any[]
 ) {
@@ -546,23 +632,40 @@ export async function generateCompanyInsight(
   // 1. Prepare Data for Prompt
   const reviewsText = reviews
     .slice(0, 20)
-    .map((r) =>
-      `[Date: ${r.createdAt.toISOString().split("T")[0]}, Rating: ${r.starRating}]: ${r.comment}`
+    .map(
+      (r) =>
+        `[Date: ${r.createdAt.toISOString().split("T")[0]}, Rating: ${
+          r.starRating
+        }]: ${r.comment}`
     )
     .join("\n");
 
-  const metricsText = metrics ? `
+  // ✅ 2. Update metricsText to include Ad Clicks
+  const metricsText = metrics
+    ? `
     - TrustScore: ${metrics.trustScore.toFixed(1)}/5
     - Net Sentiment Score (NSS): ${metrics.nss}
     - Total Reviews: ${metrics.totalReviews}
     - Search Impressions: ${metrics.searchImpressions}
     - Click-Through Rate (CTR): ${metrics.ctr}%
+    - Total Ad Clicks: ${metrics.adClicks} 
     - Est. Ad Value: $${metrics.adValue}
-  ` : "No metric data available.";
+  `
+    : "No metric data available.";
 
-  const queriesText = topQueries && topQueries.length > 0 ? 
-    topQueries.slice(0, 5).map((q: any) => `${q.query} (${q.clicks} clicks)`).join(", ") 
-    : "No search query data.";
+  // ✅ 3. Update queriesText to show breakdown
+  const queriesText =
+    topQueries && topQueries.length > 0
+      ? topQueries
+          .slice(0, 5)
+          .map(
+            (q: any) =>
+              `${q.query} (${q.clicks} total clicks${
+                q.adClicks > 0 ? `, ${q.adClicks} from ads` : ""
+              })`
+          )
+          .join("\n    ")
+      : "No search query data.";
 
   const prompt = `
     Act as a Senior Business Analyst. Analyze the following company performance data:
@@ -578,9 +681,9 @@ export async function generateCompanyInsight(
 
     ----------------
     ### INSTRUCTIONS:
-    1. **Executive Summary:** Write a 2-sentence high-level overview connecting the metrics (like TrustScore/Traffic) to the user feedback. Mention if search traffic aligns with reputation.
+    1. **Executive Summary:** Write a 2-sentence high-level overview connecting the metrics (like TrustScore/Traffic) to the user feedback. Mention if sponsored ads are driving significant traffic.
     2. **Strategic Suggestions:** Provide 3 bullet points focused on GROWTH (SEO, PPC, Traffic) and REPUTATION management.
-    3. **Sentiment Analysis:** (For the reviews only) Summarize the specific emotional drivers (e.g., "Positive sentiment driven by staff, negative by wait times").
+    3. **Sentiment Analysis:** (For the reviews only) Summarize the specific emotional drivers.
     4. **Sentiment Action Items:** Provide 2 specific operational fixes based purely on the complaints found in reviews.
     5. **Trend Analysis:** A 1-sentence explanation of the timing/trajectory of reviews.
 
@@ -599,34 +702,38 @@ export async function generateCompanyInsight(
     const result = await model.generateContent(prompt);
     const text = result.response.text();
     return JSON.parse(text.replace(/```json|```/g, "").trim());
-
   } catch (primaryError) {
     // 👉 ATTEMPT 2: Fallback Model (Groq)
-    console.warn("⚠️ Insights: Gemini failed, switching to Groq:", primaryError);
-    
+    console.warn(
+      "⚠️ Insights: Gemini failed, switching to Groq:",
+      primaryError
+    );
+
     try {
-        const completion = await groq.chat.completions.create({
-            messages: [
-                { role: "system", content: "You are a JSON-only API. Output strict JSON." },
-                { role: "user", content: prompt }
-            ],
-            model: "llama-3.1-8b-instant", 
-            temperature: 0, 
-            response_format: { type: "json_object" }
-        });
+      const completion = await groq.chat.completions.create({
+        messages: [
+          {
+            role: "system",
+            content: "You are a JSON-only API. Output strict JSON.",
+          },
+          { role: "user", content: prompt },
+        ],
+        model: "llama-3.1-8b-instant",
+        temperature: 0,
+        response_format: { type: "json_object" },
+      });
 
-        const text = completion.choices[0]?.message?.content || "{}";
-        return JSON.parse(text);
-
+      const text = completion.choices[0]?.message?.content || "{}";
+      return JSON.parse(text);
     } catch (fallbackError) {
-        console.error("❌ Insights: Both AI models failed.", fallbackError);
-        return {
-            summary: "AI Analysis currently unavailable.",
-            suggestions: ["Check back later."],
-            trendAnalysis: "Data unavailable.",
-            sentimentAnalysis: "Data unavailable.",
-            sentimentActions: []
-        };
+      console.error("❌ Insights: Both AI models failed.", fallbackError);
+      return {
+        summary: "AI Analysis currently unavailable.",
+        suggestions: ["Check back later."],
+        trendAnalysis: "Data unavailable.",
+        sentimentAnalysis: "Data unavailable.",
+        sentimentActions: [],
+      };
     }
   }
 }

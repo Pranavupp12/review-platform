@@ -52,6 +52,7 @@ type FilterOptions = {
   claimed?: string;
   country?: string;
   sort?: string;
+  q?: string;
 };
 
 const prisma = new PrismaClient();
@@ -219,23 +220,42 @@ export async function getAllCategories() {
   return categories;
 }
 
+function extractLocationFromQuery(query: string | undefined): string | undefined {
+  if (!query) return undefined;
+  // Matches "in", "near", or "at" followed by any text until the end
+  const match = query.match(/\b(?:in|near|at)\s+(.+)$/i);
+  if (match && match[1]) {
+    return match[1].trim();
+  }
+  return undefined;
+}
+
 // 6. Fetch SubCategory Details
 export async function getSubCategoryCompanies(
   subCategorySlug: string,
-  filters?: any,
+  filters?: FilterOptions, 
   page: number = 1
 ) {
   if (!subCategorySlug) return null;
   const PAGE_SIZE = 10;
+  
+  // ✅ FIX: Default to empty object
+  const safeFilters = filters || {};
 
   try {
+    let targetCity = safeFilters.city;
+    if (!targetCity && safeFilters.q) {
+        targetCity = extractLocationFromQuery(safeFilters.q);
+    }
+
     const companyWhereClause: any = {};
-    if (filters?.claimed === "true") companyWhereClause.claimed = true;
-    if (filters?.country && filters.country !== "all")
-      companyWhereClause.country = filters.country;
-    if (filters?.city) {
+    if (safeFilters.claimed === "true") companyWhereClause.claimed = true;
+    if (safeFilters.country && safeFilters.country !== "all")
+      companyWhereClause.country = safeFilters.country;
+    
+    if (targetCity) {
       companyWhereClause.OR = [
-        { city: { contains: filters.city, mode: "insensitive" } },
+        { city: { contains: targetCity, mode: "insensitive" } },
         { isSponsored: true },
       ];
     }
@@ -273,6 +293,7 @@ export async function getSubCategoryCompanies(
       ...c,
       rating: c.rating || 0,
       reviewCount: c.reviewCount || 0,
+      // @ts-ignore
       logoImage: getOptimizedUrl(c.logoImage, 200),
       badges: (Array.isArray(c.badges) ? [...c.badges] : []).filter(
         (b) => b !== "MOST_RELEVANT"
@@ -280,8 +301,8 @@ export async function getSubCategoryCompanies(
     }));
 
     const sponsored = [];
-    let organic = []; // Changed to 'let'
-    const searchCity = filters?.city?.toLowerCase() || "";
+    let organic = []; 
+    const searchCity = targetCity?.toLowerCase() || "";
 
     for (const company of allCompanies) {
       if (company.isSponsored) {
@@ -304,25 +325,23 @@ export async function getSubCategoryCompanies(
       }
     }
 
-    // ✅ USE HELPER: Sort Lists
+    // @ts-ignore
     const sortedSponsored = sortCompanies(sponsored, "relevant");
-    organic = sortCompanies(organic, filters?.sort || "relevant");
+    // @ts-ignore
+    organic = sortCompanies(organic, safeFilters.sort || "relevant");
 
-    // Award Badge
-    const isDefaultSort = !filters?.sort || filters.sort === "relevant";
+    const isDefaultSort = !safeFilters.sort || safeFilters.sort === "relevant";
     if (isDefaultSort) {
       for (let i = 0; i < organic.length; i++) {
         if (i < 5) organic[i].badges = ["MOST_RELEVANT", ...organic[i].badges];
       }
     }
 
-    // Rating Filter
-    if (filters?.rating && filters.rating !== "all") {
-      const minRating = parseFloat(filters.rating);
+    if (safeFilters.rating && safeFilters.rating !== "all") {
+      const minRating = parseFloat(safeFilters.rating);
       organic = organic.filter((c) => c.rating >= minRating);
     }
 
-    // Pagination
     const totalItems = organic.length;
     const startIndex = (page - 1) * PAGE_SIZE;
     const paginatedOrganic = organic.slice(startIndex, startIndex + PAGE_SIZE);
@@ -340,24 +359,37 @@ export async function getSubCategoryCompanies(
 }
 
 // 7. Fetch Category Companies
+// --- GET CATEGORY COMPANIES ---
 export async function getCategoryCompanies(
   categorySlug: string,
-  filters?: any,
+  filters?: FilterOptions, 
   page: number = 1
 ) {
   if (!categorySlug) return null;
   const PAGE_SIZE = 10;
+  
+  // ✅ FIX: Default to empty object to prevent "possibly undefined" errors
+  const safeFilters = filters || {}; 
 
   try {
-    const companyWhereClause: any = {};
-    if (filters?.claimed === "true") companyWhereClause.claimed = true;
-    if (filters?.country && filters.country !== "all")
-      companyWhereClause.country = filters.country;
+    // Logic: Determine Target City
+    let targetCity = safeFilters.city;
+    
+    // Check 'q' if city is missing
+    if (!targetCity && safeFilters.q) {
+        targetCity = extractLocationFromQuery(safeFilters.q);
+    }
 
-    if (filters?.city) {
+    const companyWhereClause: any = {};
+    if (safeFilters.claimed === "true") companyWhereClause.claimed = true;
+    if (safeFilters.country && safeFilters.country !== "all")
+      companyWhereClause.country = safeFilters.country;
+
+    // Apply City Filter
+    if (targetCity) {
       companyWhereClause.OR = [
-        { city: { contains: filters.city, mode: "insensitive" } },
-        { isSponsored: true },
+        { city: { contains: targetCity, mode: "insensitive" } },
+        { isSponsored: true }, 
       ];
     }
 
@@ -394,6 +426,7 @@ export async function getCategoryCompanies(
       ...c,
       rating: c.rating || 0,
       reviewCount: c.reviewCount || 0,
+      // @ts-ignore
       logoImage: getOptimizedUrl(c.logoImage, 200),
       badges: (Array.isArray(c.badges) ? [...c.badges] : []).filter(
         (b) => b !== "MOST_RELEVANT"
@@ -401,10 +434,9 @@ export async function getCategoryCompanies(
     }));
 
     const sponsored = [];
-    let organic = []; // Changed to 'let' so we can re-assign sorted list
-    const searchCity = filters?.city?.toLowerCase() || "";
+    let organic = []; 
+    const searchCity = targetCity?.toLowerCase() || "";
 
-    // Separate Sponsored vs Organic
     for (const company of allCompanies) {
       if (company.isSponsored) {
         if (company.sponsoredScope === "GLOBAL") {
@@ -427,14 +459,13 @@ export async function getCategoryCompanies(
       }
     }
 
-    // ✅ USE HELPER: Sort Sponsored (Always by Relevance/Rating)
+    // @ts-ignore
     const sortedSponsored = sortCompanies(sponsored, "relevant");
+    // @ts-ignore
+    organic = sortCompanies(organic, safeFilters.sort || "relevant");
 
-    // ✅ USE HELPER: Sort Organic (Based on User Filter)
-    organic = sortCompanies(organic, filters?.sort || "relevant");
-
-    // Award Badges ONLY if sorting by "Relevant" (Default)
-    const isDefaultSort = !filters?.sort || filters.sort === "relevant";
+    // Award Badges
+    const isDefaultSort = !safeFilters.sort || safeFilters.sort === "relevant";
     if (isDefaultSort) {
       for (let i = 0; i < organic.length; i++) {
         if (i < 5) {
@@ -444,14 +475,11 @@ export async function getCategoryCompanies(
     }
 
     // Apply Rating Filter
-    if (filters?.rating && filters.rating !== "all") {
-      const minRating = parseFloat(filters.rating);
+    if (safeFilters.rating && safeFilters.rating !== "all") {
+      const minRating = parseFloat(safeFilters.rating);
       organic = organic.filter((c) => c.rating >= minRating);
-      // We don't filter sponsored items by rating usually, but you can if you want:
-      // sortedSponsored = sortedSponsored.filter(c => c.rating >= minRating);
     }
 
-    // Pagination
     const totalItems = organic.length;
     const startIndex = (page - 1) * PAGE_SIZE;
     const paginatedOrganic = organic.slice(startIndex, startIndex + PAGE_SIZE);
@@ -471,7 +499,6 @@ export async function getCategoryCompanies(
   }
 }
 
-// 8. Fetch Single Company Profile by SLUG
 // 8. Fetch Single Company Profile by SLUG
 export async function getCompanyBySlug(
   companySlug: string,
@@ -509,6 +536,7 @@ export async function getCompanyBySlug(
           orderBy: { createdAt: "desc" },
           take: 5,
         },
+        showcaseItems: true,
       },
     });
 
@@ -581,6 +609,9 @@ export async function getCompanyBySlug(
 
     return {
       ...company,
+      showcaseItems: company.showcaseItems.filter(
+        (item) => item.type === (company.companyType || "SERVICE")
+      ),
       rating: company.rating || 0,
       reviewCount: company.reviewCount || 0,
       logoImage: getOptimizedUrl(company.logoImage, 200),

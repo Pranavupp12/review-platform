@@ -10,6 +10,7 @@ import {
   ArrowUpRight, ArrowDownRight, Minus, 
   MapPin, Search, MousePointerClick, Eye, Zap 
 } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"; // ✅ Import Table
 
 interface ComparisonTabProps {
   companyId: string;
@@ -22,15 +23,12 @@ export function ComparisonTab({ companyId, companyName }: ComparisonTabProps) {
   const [comparisonData, setComparisonData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
-  // 1. Load Competitor List on Mount
   useEffect(() => {
     getCompetitors(companyId).then(setCompetitors);
   }, [companyId]);
 
-  // 2. Fetch Data when Competitor Selected
   useEffect(() => {
     if (!selectedCompetitor) return;
-    
     setLoading(true);
     getComparisonData(companyId, selectedCompetitor)
       .then((data) => {
@@ -145,49 +143,51 @@ export function ComparisonTab({ companyId, companyName }: ComparisonTabProps) {
             </Card>
           </div>
 
-          {/* 2. TOP QUERIES TABLE */}
+          {/* 2. TOP QUERIES TABLES (Side-by-Side) */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card>
-              <CardHeader>
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <Search className="h-4 w-4 text-purple-500" /> Top Search Queries (You)
+              <CardHeader className="pb-3 border-b border-gray-100">
+                <CardTitle className="text-sm font-bold flex items-center gap-2">
+                  <Search className="h-4 w-4 text-purple-500" /> Top Queries (You)
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-0">
                 <TableList data={comparisonData.myData.topQueries} type="query" />
               </CardContent>
             </Card>
+            
             <Card className="bg-gray-50/50 border-dashed">
-              <CardHeader>
-                <CardTitle className="text-sm font-medium flex items-center gap-2 text-gray-600">
-                  <Search className="h-4 w-4 text-gray-400" /> Top Search Queries ({selectedName})
+              <CardHeader className="pb-3 border-b border-gray-200">
+                <CardTitle className="text-sm font-bold flex items-center gap-2 text-gray-600">
+                  <Search className="h-4 w-4 text-gray-400" /> Top Queries ({selectedName})
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-0">
                 <TableList data={comparisonData.theirData.topQueries} type="query" />
               </CardContent>
             </Card>
           </div>
 
-          {/* 3. TOP LOCATIONS TABLE */}
+          {/* 3. TOP LOCATIONS TABLES (Side-by-Side) */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card>
-              <CardHeader>
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <CardHeader className="pb-3 border-b border-gray-100">
+                <CardTitle className="text-sm font-bold flex items-center gap-2">
                   <MapPin className="h-4 w-4 text-red-500" /> Top Locations (You)
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-0">
                 <TableList data={comparisonData.myData.topLocations} type="location" />
               </CardContent>
             </Card>
+            
             <Card className="bg-gray-50/50 border-dashed">
-              <CardHeader>
-                <CardTitle className="text-sm font-medium flex items-center gap-2 text-gray-600">
+              <CardHeader className="pb-3 border-b border-gray-200">
+                <CardTitle className="text-sm font-bold flex items-center gap-2 text-gray-600">
                   <MapPin className="h-4 w-4 text-gray-400" /> Top Locations ({selectedName})
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-0">
                 <TableList data={comparisonData.theirData.topLocations} type="location" />
               </CardContent>
             </Card>
@@ -199,22 +199,32 @@ export function ComparisonTab({ companyId, companyName }: ComparisonTabProps) {
   );
 }
 
-// Simple Sub-component for lists
+// ✅ NEW: Clean Table List Component
 function TableList({ data, type }: { data: any[], type: 'query' | 'location' }) {
-  if (data.length === 0) return <div className="text-xs text-gray-400 italic">No data available.</div>;
+  if (data.length === 0) return <div className="p-6 text-center text-xs text-gray-400 italic">No data available.</div>;
   
   return (
-    <ul className="space-y-3">
-      {data.map((item, i) => (
-        <li key={i} className="flex justify-between text-sm">
-          <span className="capitalize font-medium text-gray-700">
-            {type === 'query' ? item.query : item.location}
-          </span>
-          <span className="text-gray-500 text-xs bg-white border px-2 py-0.5 rounded-full">
-            {item.count} imps
-          </span>
-        </li>
-      ))}
-    </ul>
+    <Table>
+      <TableHeader>
+        <TableRow className="hover:bg-transparent">
+          <TableHead className="h-9 text-xs">{type === 'query' ? 'Search Term' : 'Region'}</TableHead>
+          <TableHead className="h-9 text-xs text-right">Volume</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {data.map((item, i) => (
+          <TableRow key={i} className="hover:bg-transparent">
+            <TableCell className="py-2 text-sm font-medium text-gray-700 capitalize">
+               {type === 'query' ? item.query : item.location}
+            </TableCell>
+            <TableCell className="py-2 text-right">
+               <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-bold">
+                 {item.count}
+               </span>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   );
 }

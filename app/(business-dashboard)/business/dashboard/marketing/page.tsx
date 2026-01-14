@@ -6,22 +6,13 @@ import { EmailUsageTracker } from "@/components/business_dashboard/email-usage-t
 import { Mail, History, Users, Sparkles, Zap, Crown } from "lucide-react";
 import { redirect } from "next/navigation";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+// ✅ IMPORT THE NEW HELPER
+import { getCompanyFeatures } from "@/lib/plan-config";
 
 // Helper to format dates
 function formatDate(date: Date) {
    return new Date(date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
-
-// ✅ CONFIG: Define limits for each plan
-// Make sure these Keys match your Prisma Enum (likely uppercase: FREE, GROWTH, SCALE)
-const PLAN_CONFIG: Record<string, { limit: number; batchSize: number }> = {
-   FREE: { limit: 10, batchSize: 50 },
-   GROWTH: { limit: 300, batchSize: Infinity },
-   SCALE: { limit: 3000, batchSize: Infinity },
-   CUSTOM: { limit: Infinity, batchSize: Infinity },
-   // Fallback for legacy PRO users (Treat as Growth or Scale)
-   PRO: { limit: 300, batchSize: Infinity } 
-};
 
 export const metadata = { title: "Email Marketing" };
 
@@ -29,10 +20,15 @@ export default async function MarketingPage() {
    const session = await auth();
    if (!session?.user?.companyId) return redirect("/business/login");
 
-   // 1. Fetch Company Plan
+   // 1. Fetch Company Plan & New Override Fields
    const company = await prisma.company.findUnique({
       where: { id: session.user.companyId },
-      select: { plan: true, emailUsageCount: true }
+      select: { 
+         plan: true, 
+         emailUsageCount: true,
+         // ✅ Select the new override column so the helper can see it
+         customEmailLimit: true 
+      }
    });
 
    const campaigns = await prisma.campaign.findMany({
@@ -40,16 +36,18 @@ export default async function MarketingPage() {
       orderBy: { createdAt: 'desc' }
    });
 
-   // 2. ✅ CALCULATE LIMITS DYNAMICALLY
+   // 2. ✅ CALCULATE LIMITS DYNAMICALLY (Replaces old PLAN_CONFIG)
+   // This handles Free, Growth, Scale defaults + any Admin overrides automatically.
+   const features = getCompanyFeatures(company);
+
    const userPlan = company?.plan || "FREE";
-   
-   // Get config for plan, or fallback to FREE if plan name doesn't exist
-   const config = PLAN_CONFIG[userPlan] || PLAN_CONFIG.FREE;
-   
    const usage = company?.emailUsageCount || 0;
    
+   const limit = features.emailLimit;
+   const batchSize = features.emailBatchSize;
+   
    // Limit is reached if it's NOT infinite AND usage >= limit
-   const isLimitReached = config.limit !== Infinity && usage >= config.limit;
+   const isLimitReached = limit !== Infinity && usage >= limit;
 
    // Helper for badge styling
    const getBadge = (plan: string) => {
@@ -84,7 +82,7 @@ export default async function MarketingPage() {
          <EmailUsageTracker
             plan={userPlan}
             usage={usage}
-            limit={config.limit}
+            limit={limit} 
          />
 
          {/* SECTION 1: CREATE CAMPAIGN */}
@@ -93,11 +91,10 @@ export default async function MarketingPage() {
                <h2 className="text-xl font-bold text-[#000032]">Create New Campaign</h2>
             </div>
             
-            {/* ✅ FIXED: Explicitly pass batchSizeLimit based on the calculated config */}
             <CreateCampaignForm 
                userEmail={session.user.email || ""} 
                isLimitReached={isLimitReached} 
-               batchSizeLimit={config.batchSize} 
+               batchSizeLimit={batchSize} 
             />
          </div>
 

@@ -10,7 +10,9 @@ import {
   Send,
   Users,
   Edit,
-  Save
+  Save,
+  Megaphone,
+  MousePointerClick
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,10 +33,11 @@ import {
   DialogFooter,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { deleteCampaign, sendDraft, updateDraft } from "@/lib/actions";
+import { deleteCampaign, sendDraft, updateDraft } from "@/lib/email-actions"; // ✅ Updated Import
 import { toast } from "sonner";
 import Image from "next/image";
 
+// ✅ UPDATE INTERFACE
 interface CampaignProps {
   id: string;
   name: string;
@@ -46,19 +49,26 @@ interface CampaignProps {
   logoUrl?: string | null;
   bannerUrl?: string | null;
   recipients?: string[];
+  // New Fields
+  templateType?: "INVITE" | "PROMOTIONAL" | null; 
+  buttonText?: string | null;
+  buttonUrl?: string | null;
 }
 
 export default function CampaignActions({ campaign }: { campaign: CampaignProps }) {
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isSendOpen, setIsSendOpen] = useState(false);
-  const [isEditOpen, setIsEditOpen] = useState(false); // ✅ New Edit State
+  const [isEditOpen, setIsEditOpen] = useState(false); 
   const [isPending, setIsPending] = useState(false);
 
   // Edit Form State
   const [editContent, setEditContent] = useState(campaign.content);
   const [logoPreview, setLogoPreview] = useState<string | null>(campaign.logoUrl || null);
   const [bannerPreview, setBannerPreview] = useState<string | null>(campaign.bannerUrl || null);
+
+  // ✅ New State for Template Logic
+  const [templateType, setTemplateType] = useState<"INVITE" | "PROMOTIONAL">(campaign.templateType || "INVITE");
 
   // --- HANDLERS ---
   
@@ -86,15 +96,16 @@ export default function CampaignActions({ campaign }: { campaign: CampaignProps 
      setIsPending(false);
   };
 
-  // ✅ New Update Handler
   const handleUpdateDraft = async (formData: FormData) => {
     setIsPending(true);
     formData.append("campaignId", campaign.id);
     formData.append("htmlContent", editContent);
+    // ✅ Ensure template type is appended (Select doesn't auto-append to form)
+    formData.append("templateType", templateType);
 
-    const res = await updateDraft(null, formData); // Call Server Action
+    const res = await updateDraft(null, formData); 
     if (res.success) {
-        toast.success(res.success);
+        toast.success(res.success as string);
         setIsEditOpen(false);
     } else {
         toast.error(res.error);
@@ -107,6 +118,12 @@ export default function CampaignActions({ campaign }: { campaign: CampaignProps 
     if (file) setPreview(URL.createObjectURL(file));
   };
 
+  // Helper to get button text for preview
+  const getPreviewButtonText = () => {
+      if (campaign.templateType === "PROMOTIONAL") return campaign.buttonText || "View Details";
+      return "Rate Your Experience";
+  };
+
   return (
     <>
       <DropdownMenu>
@@ -117,14 +134,12 @@ export default function CampaignActions({ campaign }: { campaign: CampaignProps 
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           
-          {/* ACTIONS FOR DRAFTS ONLY */}
           {campaign.status === "DRAFT" && (
               <>
                 <DropdownMenuItem onClick={() => setIsSendOpen(true)} className="cursor-pointer text-blue-600 font-medium focus:text-blue-700">
                     <Send className="mr-2 h-4 w-4" /> Send Now
                 </DropdownMenuItem>
                 
-                {/* ✅ EDIT BUTTON */}
                 <DropdownMenuItem onClick={() => setIsEditOpen(true)} className="cursor-pointer">
                     <Edit className="mr-2 h-4 w-4" /> Edit Draft
                 </DropdownMenuItem>
@@ -141,7 +156,7 @@ export default function CampaignActions({ campaign }: { campaign: CampaignProps 
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* --- 1. EDIT DRAFT MODAL (New) --- */}
+      {/* --- 1. EDIT DRAFT MODAL --- */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -160,6 +175,55 @@ export default function CampaignActions({ campaign }: { campaign: CampaignProps 
                    <Label>Subject Line</Label>
                    <Input name="subject" defaultValue={campaign.subject} required />
                 </div>
+             </div>
+
+             {/* ✅ NEW: Template Type Selector */}
+             <div className="space-y-3 bg-blue-50/50 p-4 rounded-lg border border-blue-100">
+                <Label>Campaign Goal</Label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div 
+                    onClick={() => setTemplateType("INVITE")}
+                    className={`cursor-pointer border rounded-lg p-3 flex items-center gap-3 transition-all ${templateType === "INVITE" ? "bg-white border-[#0ABED6] ring-1 ring-[#0ABED6]" : "bg-white border-gray-200 hover:border-blue-300"}`}
+                  >
+                    <div className={`p-2 rounded-full ${templateType === "INVITE" ? "bg-blue-100 text-[#0ABED6]" : "bg-gray-100 text-gray-500"}`}>
+                       <Users className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-gray-900">Review Invite</p>
+                      <p className="text-xs text-gray-500">Ask customers for feedback</p>
+                    </div>
+                  </div>
+
+                  <div 
+                    onClick={() => setTemplateType("PROMOTIONAL")}
+                    className={`cursor-pointer border rounded-lg p-3 flex items-center gap-3 transition-all ${templateType === "PROMOTIONAL" ? "bg-white border-[#0ABED6] ring-1 ring-[#0ABED6]" : "bg-white border-gray-200 hover:border-blue-300"}`}
+                  >
+                    <div className={`p-2 rounded-full ${templateType === "PROMOTIONAL" ? "bg-purple-100 text-purple-600" : "bg-gray-100 text-gray-500"}`}>
+                       <Megaphone className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-gray-900">Promotional</p>
+                      <p className="text-xs text-gray-500">Send offers or news</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Promotional Inputs */}
+                {templateType === "PROMOTIONAL" && (
+                   <div className="grid grid-cols-2 gap-4 mt-3 animate-in fade-in slide-in-from-top-2">
+                      <div className="space-y-2">
+                         <Label className="text-xs">Button Label</Label>
+                         <div className="relative">
+                            <MousePointerClick className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                            <Input name="customBtnText" defaultValue={campaign.buttonText || ""} placeholder="e.g. Shop Now" className="pl-9" />
+                         </div>
+                      </div>
+                      <div className="space-y-2">
+                         <Label className="text-xs">Button Link URL</Label>
+                         <Input name="customBtnUrl" defaultValue={campaign.buttonUrl || ""} placeholder="https://" />
+                      </div>
+                   </div>
+                )}
              </div>
 
              {/* Images Grid */}
@@ -198,7 +262,6 @@ export default function CampaignActions({ campaign }: { campaign: CampaignProps 
                  <Label>Recipients (Comma separated)</Label>
                  <Textarea 
                     name="recipients" 
-                    // Join array back to string for editing
                     defaultValue={campaign.recipients?.join(", ")} 
                     className="min-h-[80px] font-mono text-sm"
                  />
@@ -215,11 +278,9 @@ export default function CampaignActions({ campaign }: { campaign: CampaignProps 
         </DialogContent>
       </Dialog>
 
-      {/* --- 2. VIEW DETAILS MODAL (Existing) --- */}
+      {/* --- 2. VIEW DETAILS MODAL --- */}
       <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-gray-50">
-           {/* ... (Existing View Code) ... */}
-           {/* I'm keeping your existing View logic here implicitly */}
             <DialogHeader>
                 <DialogTitle>Campaign Preview</DialogTitle>
                 <DialogDescription>Subject: <span className="font-medium text-black">{campaign.subject}</span></DialogDescription>
@@ -227,9 +288,21 @@ export default function CampaignActions({ campaign }: { campaign: CampaignProps 
             <div className="mx-auto w-full max-w-[600px] bg-white border border-gray-200 rounded-md overflow-hidden shadow-sm mt-2">
                 {campaign.logoUrl && <div className="text-center p-5 border-b border-gray-100 bg-white"><img src={campaign.logoUrl} alt="Logo" className="h-12 object-contain mx-auto" /></div>}
                 {campaign.bannerUrl && <div className="w-full"><img src={campaign.bannerUrl} alt="Banner" className="w-full h-auto block" /></div>}
-                <div className="p-8 text-[#333] leading-relaxed"><div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: campaign.content }} /></div>
+                
+                <div className="p-8 text-[#333] leading-relaxed">
+                   <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: campaign.content }} />
+                </div>
+
+                {/* ✅ Button Preview */}
+                <div className="text-center px-8 pb-8">
+                   <span className="inline-block bg-[#0ABED6] text-white px-6 py-3 rounded font-bold text-sm">
+                      {getPreviewButtonText()}
+                   </span>
+                </div>
+
                 <div className="bg-gray-50 p-4 text-center text-xs text-gray-400 border-t border-gray-100">Sent by {campaign.name}</div>
             </div>
+
             {/* Recipients List */}
             <div className="mx-auto w-full max-w-[600px] mt-6">
               <h4 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2"><Users className="h-4 w-4 text-[#0ABED6]" /> Target Audience ({campaign.recipients?.length || 0})</h4>

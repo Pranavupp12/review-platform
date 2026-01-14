@@ -17,6 +17,7 @@ type CompanyListCardProps = {
   rating: number;
   reviewCount: number;
   badges?: string[];
+  isFeatured?: boolean;
   
   // 👇 3. Add these optional props for tracking context
   trackingContext?: {
@@ -36,6 +37,7 @@ export function CompanyListCard({
   rating,
   reviewCount,
   badges = [],
+  isFeatured = false,
   trackingContext // Destructure new prop
 }: CompanyListCardProps) {
 
@@ -50,7 +52,7 @@ export function CompanyListCard({
     const region = trackingContext?.userRegion || "unknown"; // ✅ Get region
 
     // ✅ Pass all 4 arguments: ID, Query, Location (Filter), UserRegion (Physical)
-    trackSearchClick(id, query, loc, region);
+    trackSearchClick(id, query, loc, region, isFeatured);
   };
 
   return (

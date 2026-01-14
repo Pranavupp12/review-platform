@@ -46,10 +46,12 @@ export const BADGE_CONFIG: Record<string, { label: string; description: string; 
   }
 };
 
-// 2. ✅ NEW: Add Plan Rules Here (Centralized)
+// 2. ✅ UPDATED: Plan Rules (Centralized)
+// Added CUSTOM: [] so custom plans have no forced/locked badges
 export const PLAN_AUTO_BADGES: Record<string, string[]> = {
   FREE: [],
   GROWTH: ['COMMUNITY_FAV', 'VERIFIED_DETAILS'],
   SCALE: ['COMMUNITY_FAV', 'VERIFIED_DETAILS', 'CATEGORY_LEADER'],
-  PRO: ['COMMUNITY_FAV', 'VERIFIED_DETAILS'], // Fallback for legacy
+  PRO: ['COMMUNITY_FAV', 'VERIFIED_DETAILS'], 
+  CUSTOM: [] // ✅ Custom plan = No forced badges, full manual control
 };

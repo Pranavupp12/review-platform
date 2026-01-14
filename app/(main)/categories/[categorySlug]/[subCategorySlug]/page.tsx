@@ -42,7 +42,9 @@ export default async function SubCategoryCompaniesPage({ params, searchParams }:
   const { subCategorySlug, categorySlug } = await params;
   const resolvedSearchParams = await searchParams;
   const userQuery = resolvedSearchParams.q;
-  const locationFilter = resolvedSearchParams.loc || resolvedSearchParams.zip;
+
+  const locationFilter = resolvedSearchParams.loc || resolvedSearchParams.zip || resolvedSearchParams.region;
+  
   const region = (resolvedSearchParams.region as string) || "";
   const sortFilter = resolvedSearchParams.sort;
   const page = Number(resolvedSearchParams.page) || 1;
@@ -53,6 +55,7 @@ export default async function SubCategoryCompaniesPage({ params, searchParams }:
     country: resolvedSearchParams.country,
     claimed: resolvedSearchParams.claimed,
     sort: sortFilter,
+    q: userQuery,
   }, page);
 
   if (!data || !data.category) {
@@ -149,9 +152,10 @@ export default async function SubCategoryCompaniesPage({ params, searchParams }:
                       key={company.id}
                       {...company}
                       badges={company.badges}
+                      isFeatured={true}
                       trackingContext={{
                         query: userQuery || `SubCategory: ${subCategoryName}`,
-                        location: locationFilter || "Global (Sponsored)",
+                        location: locationFilter || "Global",
                         userRegion: region,
                       }}
                    />

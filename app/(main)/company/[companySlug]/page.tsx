@@ -22,6 +22,9 @@ import { ContactDetailsCard } from '@/components/company_components/contact-deta
 import { SimilarCompaniesCarousel } from '@/components/company_components/similar-companies-carousel';
 import { BusinessUpdatesCarousel } from '@/components/company_components/business-updates-carousel';
 import { RequestQuoteCard } from '@/components/company_components/request-quote-card';
+// ✅ IMPORT THE NEW HELPER
+import { getCompanyFeatures } from "@/lib/plan-config";
+import { ShowcaseCarousel } from '@/components/company_components/showcase-carousel';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,10 +61,15 @@ export default async function CompanyProfilePage({ params, searchParams }: PageP
     notFound();
   }
 
-  // 2. Fetch Similar Companies (Only fetch if NOT Scale plan, optimization)
+  // ✅ 2. CALCULATE FEATURES (Plan + Overrides)
+  const features = getCompanyFeatures(company);
+
+  // 3. Fetch Similar Companies (Optimization: Check feature flag)
+  // Old Logic: if (company.plan !== 'SCALE')
+  // New Logic: Check if competitors are NOT hidden
   let relatedCompanies: any[] = [];
-  if (company.plan !== 'SCALE') {
-     relatedCompanies = await getSimilarCompanies(company.category.id, company.id);
+  if (!features.shouldHideCompetitors) {
+    relatedCompanies = await getSimilarCompanies(company.category.id, company.id);
   }
 
   const reviewIds = company.reviews.map(r => r.id);
@@ -99,9 +107,21 @@ export default async function CompanyProfilePage({ params, searchParams }: PageP
 
             <PlatformTrustBadge />
 
-            {/* Business Updates Carousel - ✅ CONDITIONALLY RENDERED */}
-            {/* Shows only if Plan is NOT FREE and updates exist */}
-            {company.plan !== 'FREE' && (company as any).updates && (company as any).updates.length > 0 && (
+            {/* ✅ SHOWCASE CAROUSEL */}
+            {/* Only show if items exist */}
+            {company.showcaseItems && company.showcaseItems.length > 0 && (
+              <ShowcaseCarousel
+                items={company.showcaseItems}
+                // Add a fallback in case companyType is null in the DB
+                type={company.companyType || "SERVICE"}
+                companyName={company.name}
+                companyLogo={company.logoImage}
+              />
+            )}
+
+            {/* Business Updates Carousel */}
+            {/* Logic: Show if they are allowed to post updates OR if they have existing ones */}
+            {(features.updateLimit > 0 || company.plan !== 'FREE') && (company as any).updates && (company as any).updates.length > 0 && (
               <BusinessUpdatesCarousel
                 updates={(company as any).updates}
                 companyName={company.name}
@@ -123,14 +143,21 @@ export default async function CompanyProfilePage({ params, searchParams }: PageP
               email={(company as any).contact?.email || (company as any).email}
               address={company.address}
             />
-            <RequestQuoteCard 
-              companyId={company.id}
-              companyName={company.name}
-            />
-            <CallToActionCard
-              phoneNumber={(company as any).contact?.phone || (company as any).phone || "1-800-123-4567"}
-              companyId={company.id}
-            />
+
+            {/* ✅ LEAD GEN: Check Dynamic Feature Flag */}
+            {features.hasLeadGen && (
+              <>
+                <RequestQuoteCard
+                  companyId={company.id}
+                  companyName={company.name}
+                />
+                <CallToActionCard
+                  phoneNumber={(company as any).contact?.phone || (company as any).phone || "1-800-123-4567"}
+                  companyId={company.id}
+                />
+              </>
+            )}
+
             <TransparencyCard
               companyName={company.name}
               claimed={company.claimed}
@@ -142,9 +169,9 @@ export default async function CompanyProfilePage({ params, searchParams }: PageP
 
         {/* =========================================
             SECTION 2: SIMILAR COMPANIES (Full Width)
-            (Hidden for SCALE plan)
+            ✅ COMPETITORS: Check Dynamic Feature Flag
             ========================================= */}
-        {company.plan !== 'SCALE' && (
+        {!features.shouldHideCompetitors && (
           <div className="mb-12 ">
             <SimilarCompaniesCarousel
               categoryName={company.category.name}

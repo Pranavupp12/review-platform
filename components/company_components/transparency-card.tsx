@@ -20,25 +20,34 @@ export function TransparencyCard({ companyName, badges = [], plan = "FREE" }: Tr
   
   const normalizedPlan = plan?.toUpperCase() || "FREE";
 
-  // 1. Get Automatic Badges for the CURRENT Plan
-  const currentPlanBadges = PLAN_AUTO_BADGES[normalizedPlan] || [];
+  let finalBadges: string[] = [];
 
-  // 2. Identify ALL Possible Plan-Exclusive Badges 
-  // (We gather all badges that ANY plan could force-add, so we can strip them out from the DB list)
-  const allPlanBadges = new Set(
-    Object.values(PLAN_AUTO_BADGES).flat()
-  );
+  // ✅ FIX: Handle Custom Plan Differently
+  if (normalizedPlan === "CUSTOM") {
+    // For Custom Plans, we trust the DB 'badges' array 100%. 
+    // The Admin has full manual control, so we don't strip anything out.
+    finalBadges = [...badges];
+  } else {
+    // For Standard Plans (Free, Growth, Scale), we enforce the rules:
+    
+    // 1. Get Automatic Badges for the CURRENT Plan
+    const currentPlanBadges = PLAN_AUTO_BADGES[normalizedPlan] || [];
 
-  // 3. Filter the DB List
-  // Remove any badge that belongs to the "Plan System" (e.g., CATEGORY_LEADER)
-  // This prevents a 'Growth' user from showing 'Category Leader' just because it was stuck in their DB
-  const manualBadges = badges.filter(b => !allPlanBadges.has(b));
+    // 2. Identify badges that are "owned" by the Plan System
+    const allPlanBadges = new Set(
+      Object.values(PLAN_AUTO_BADGES).flat()
+    );
 
-  // 4. Merge: (Clean Manual Badges) + (Correct Current Plan Badges)
-  const combinedBadges = Array.from(new Set([...manualBadges, ...currentPlanBadges]));
+    // 3. Filter DB List: Remove any badge that is supposed to be managed by a Plan.
+    // (This prevents a Free user from keeping 'Category Leader' if they downgrade)
+    const manualBadges = badges.filter(b => !allPlanBadges.has(b));
 
-  // 5. Filter out 'MOST_RELEVANT' (as per request)
-  const visibleBadges = combinedBadges.filter(badgeId => badgeId !== "MOST_RELEVANT");
+    // 4. Merge: (Clean Manual Badges) + (Enforced Plan Badges)
+    finalBadges = Array.from(new Set([...manualBadges, ...currentPlanBadges]));
+  }
+
+  // 5. Filter out 'MOST_RELEVANT' (If you want this hidden from this specific card)
+  const visibleBadges = finalBadges.filter(badgeId => badgeId !== "MOST_RELEVANT");
 
   if (visibleBadges.length === 0) {
     return null;

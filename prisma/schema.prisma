@@ -25,7 +25,6 @@ enum Role {
 enum CompanyType {
   PRODUCT
   SERVICE
-  BOTH
 }
 
 type ContactInfo {
@@ -115,7 +114,7 @@ model Company {
   websiteUrl        String?
   briefIntroduction String?
   claimed           Boolean   @default(false)
-  companyType       CompanyType
+  companyType       CompanyType? @default(SERVICE)
   city              String?
   country           String?
   state             String?  
@@ -147,6 +146,12 @@ model Company {
   claimedAt         DateTime?
   leads             Lead[]
   features          String[]    @default([])
+  customEmailLimit  Int?     
+  customUpdateLimit Int?
+  enableAnalytics     Boolean? 
+  enableLeadGen       Boolean? 
+  hideCompetitors     Boolean?
+  showcaseItems ShowcaseItem[]
 
   domainVerified       DateTime?  
   domainVerifyToken    String?    
@@ -162,6 +167,19 @@ model Company {
   @@index([subCategoryId])
   @@index([keywords])
   @@index([name])
+}
+
+model ShowcaseItem {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  description String
+  images      String[] 
+  companyId   String   @db.ObjectId
+  type        CompanyType  @default(SERVICE)
+  linkUrl     String?
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model Review {
@@ -377,6 +395,7 @@ model SearchQueryStat {
   
   impressions Int      @default(0) 
   clicks      Int      @default(0)
+  adClicks    Int      @default(0)
   location    String   @default("Global")
   userRegion  String?  @default("unknown")
   

@@ -6,6 +6,8 @@ import { revalidatePath } from "next/cache";
 import { startOfMonth, endOfMonth } from "date-fns";
 import { z } from "zod";
 import { v2 as cloudinary } from 'cloudinary';
+// ✅ IMPORT THE NEW HELPER
+import { getCompanyFeatures } from "@/lib/plan-config";
 
 // 1. Configure Cloudinary
 cloudinary.config({
@@ -41,7 +43,7 @@ async function uploadToCloudinary(file: File): Promise<string> {
   });
 }
 
-// --- 4. CREATE UPDATE (With Monthly Limits) ---
+// --- 4. CREATE UPDATE (With Dynamic Limits) ---
 export async function createBusinessUpdate(prevState: any, formData: FormData) {
   const session = await auth();
   if (!session?.user?.id) return { error: "Unauthorized" };
@@ -60,29 +62,28 @@ export async function createBusinessUpdate(prevState: any, formData: FormData) {
       return { error: validated.error.issues[0].message };
     }
 
-    // Verify Ownership & Get Plan
+    // Verify Ownership & Get Plan + Override Fields
     const claim = await prisma.businessClaim.findFirst({
       where: { userId: session.user.id, companyId },
-      include: { company: { select: { plan: true } } } 
+      include: { 
+        // ✅ FETCH OVERRIDE FIELDS: We need 'customUpdateLimit' for the helper
+        company: { 
+            select: { 
+                plan: true, 
+                customUpdateLimit: true 
+            } 
+        } 
+      } 
     });
 
-    // ✅ FIX: Check if 'claim' OR 'claim.company' is missing to satisfy TypeScript
     if (!claim || !claim.company) {
         return { error: "Unauthorized operation." };
     }
 
-    // CHECK LIMITS (Server-Side Enforcement)
-    const plan = claim.company.plan || "FREE";
-    
-    const limits: Record<string, number> = {
-       FREE: 0,
-       GROWTH: 10,
-       SCALE: 20,
-       PRO: 20, // Legacy support
-       CUSTOM: 9999 
-    };
-    
-    const limit = limits[plan] || 0;
+    // ✅ CHECK LIMITS USING HELPER (Respects Admin Overrides)
+    // This replaces the hardcoded LIMITS object
+    const features = getCompanyFeatures(claim.company);
+    const limit = features.updateLimit;
 
     // Count usage for current month
     const now = new Date();
@@ -97,8 +98,8 @@ export async function createBusinessUpdate(prevState: any, formData: FormData) {
     });
 
     // 🛑 STOP if limit reached
-    if (currentUsage >= limit) {
-       return { error: `Monthly limit of ${limit} posts reached for ${plan} plan. Please upgrade to post more.` };
+    if (limit !== Infinity && currentUsage >= limit) {
+       return { error: `Monthly limit of ${limit} posts reached. Please upgrade to post more.` };
     }
 
     // Handle Image Upload
@@ -136,7 +137,7 @@ export async function createBusinessUpdate(prevState: any, formData: FormData) {
   }
 }
 
-// --- 5. UPDATE EXISTING (No Limit Check) ---
+// --- 5. UPDATE EXISTING (No Limit Check needed) ---
 export async function updateBusinessUpdate(prevState: any, formData: FormData) {
   const session = await auth();
   if (!session?.user?.id) return { error: "Unauthorized" };

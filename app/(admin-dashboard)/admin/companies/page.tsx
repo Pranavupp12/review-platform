@@ -7,11 +7,9 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { PaginationControls } from '@/components/shared/pagination-controls';
-import { BadgeModal } from '@/components/admin_components/badge-modal';
 import { CompanyDetailsModal } from '@/components/admin_components/company-details-modal';
 import { FeaturedToggle } from '@/components/admin_components/featured-toggle';
 import { CompanyFilters } from '@/components/admin_components/page-filters/company-filters';
-import { SponsoredModal } from '@/components/admin_components/sponsored-modal';
 import { FreezeCompanyDialog } from "@/components/admin_components/freeze-company-dialog"; 
 import { auth } from '@/auth'; // ✅ 1. Import Auth
 import { Prisma } from '@prisma/client';
@@ -201,20 +199,6 @@ export default async function AdminCompaniesPage({ searchParams }: PageProps) {
                         {/* ✅ 4. ADD FREEZE MODAL HERE */}
                         {/* It handles the countdown logic internally */}
                         <FreezeCompanyDialog company={company} />
-
-                        <SponsoredModal
-                          companyId={company.id}
-                          companyName={company.name}
-                          initialSponsored={company.isSponsored}
-                          initialScope={company.sponsoredScope}
-                        />
-
-                        <BadgeModal
-                          companyId={company.id}
-                          companyName={company.name}
-                          currentBadges={company.badges || []}
-                          plan={company.plan}
-                        />
 
                         <CompanyDetailsModal company={company} />
 

@@ -1,40 +1,36 @@
-
-'use server';
+"use server";
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
-import { PLAN_TEMPLATES } from "@/lib/plan-config";
 import { Plan } from "@prisma/client"; 
+import { BADGE_CONFIG } from "@/lib/badges";
 
 /**
- * Updates a company's plan and resets their features to the plan's default template.
- * @param companyId - The ID of the company to update
- * @param newPlan - The new Plan Enum (FREE, GROWTH, SCALE, CUSTOM)
+ * 1. CHANGE PLAN
+ * When changing a plan, we usually want to RESET any manual overrides 
+ * so the company strictly follows the new plan's rules.
  */
 export async function updateCompanyPlan(companyId: string, newPlan: Plan) {
   const session = await auth();
-  
   // @ts-ignore
   if (session?.user?.role !== "ADMIN") return { error: "Forbidden" };
 
   try {
-    // Get the default features for the selected plan from your config
-    // If switching to CUSTOM, this defaults to an empty array (or you could keep existing)
-    // @ts-ignore
-    const defaultFeatures = PLAN_TEMPLATES[newPlan] || [];
-
     await prisma.company.update({
       where: { id: companyId },
       data: { 
         plan: newPlan,
-        // CRITICAL: This overwrites any manual changes with the new plan's defaults.
-        // This ensures the company gets exactly what the plan promises.
-        features: defaultFeatures 
+        // RESET overrides so they inherit the new plan's defaults
+        customEmailLimit: null,
+        customUpdateLimit: null,
+        enableAnalytics: null,
+        enableLeadGen: null,
+        hideCompetitors: null
       }
     });
 
-    revalidatePath("/admin/plans");
+    revalidatePath("/admin/companies");
     return { success: `Plan updated to ${newPlan}` };
   } catch (error) {
     console.error("Plan Update Error:", error);
@@ -43,49 +39,73 @@ export async function updateCompanyPlan(companyId: string, newPlan: Plan) {
 }
 
 /**
- * Manually adds or removes a specific feature for a company.
- * Useful for the "CUSTOM" plan or creating specific overrides.
- * @param companyId - The ID of the company
- * @param featureKey - The unique key of the feature (e.g., "analytics_advanced")
- * @param isEnabled - True to add the feature, False to remove it
+ * 2. MANAGE FEATURES (OVERRIDES)
+ * This replaces the old 'toggleCompanyFeature'. 
+ * It handles Limits (numbers) AND Toggles (booleans).
  */
-export async function toggleCompanyFeature(companyId: string, featureKey: string, isEnabled: boolean) {
+export async function updateCompanyFeatures(companyId: string, formData: FormData) {
   const session = await auth();
-  
   // @ts-ignore
   if (session?.user?.role !== "ADMIN") return { error: "Forbidden" };
 
   try {
-    // 1. Fetch current features
-    const company = await prisma.company.findUnique({ 
-        where: { id: companyId }, 
-        select: { features: true } 
-    });
+    // 1. Existing Parsing
+    const emailRaw = formData.get("emailLimit") as string;
+    const updateRaw = formData.get("updateLimit") as string;
+    const analyticsRaw = formData.get("analytics") as string;
+    const leadGenRaw = formData.get("leadGen") as string;
+    const competitorsRaw = formData.get("competitors") as string;
 
-    if (!company) return { error: "Company not found" };
+    // ✅ 2. New Badge Parsing
+    // We expect badges to be sent as a JSON string or comma-separated
+    const badgesRaw = formData.get("badges") as string; 
+    let badgesToSave: string[] | undefined;
 
-    let updatedFeatures = [...company.features];
-
-    if (isEnabled) {
-      // Add if not present
-      if (!updatedFeatures.includes(featureKey)) {
-        updatedFeatures.push(featureKey);
-      }
-    } else {
-      // Remove if present
-      updatedFeatures = updatedFeatures.filter(f => f !== featureKey);
+    if (badgesRaw) {
+       try {
+          badgesToSave = JSON.parse(badgesRaw);
+       } catch (e) {
+          console.error("Failed to parse badges", e);
+       }
     }
 
-    // 2. Save updates
+    const parseTriState = (val: string) => {
+        if (val === "true") return true;
+        if (val === "false") return false;
+        return null;
+    };
+
+    const parseNullableInt = (val: string) => {
+        return val === "" ? null : parseInt(val);
+    };
+
+    // 3. Prepare Update Data
+    const updateData: any = {
+        customEmailLimit: parseNullableInt(emailRaw),
+        customUpdateLimit: parseNullableInt(updateRaw),
+        enableAnalytics: parseTriState(analyticsRaw),
+        enableLeadGen: parseTriState(leadGenRaw),
+        hideCompetitors: parseTriState(competitorsRaw),
+    };
+
+    // Only update badges if they were sent (preserves existing if frontend logic fails)
+    if (badgesToSave) {
+        updateData.badges = badgesToSave;
+    }
+
     await prisma.company.update({
       where: { id: companyId },
-      data: { features: updatedFeatures }
+      data: updateData,
     });
 
-    revalidatePath("/admin/plans");
-    return { success: "Features updated successfully" };
+    revalidatePath("/admin/companies");
+    // Also revalidate plans page
+    revalidatePath("/admin/plans"); 
+    
+    return { success: "Features & Badges updated successfully" };
+
   } catch (error) {
-    console.error("Feature Toggle Error:", error);
-    return { error: "Failed to update feature" };
+    console.error(error);
+    return { error: "Failed to update features" };
   }
 }

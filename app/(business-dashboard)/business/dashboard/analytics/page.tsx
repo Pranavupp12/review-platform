@@ -3,8 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { BarChart3, Sparkles } from "lucide-react";
 import { CompanyAnalyticsView } from "@/components/admin_components/admin-analytics/company-analytics-view";
-// ✅ Import the helper function
 import { getSearchAnalytics } from "@/lib/get-advance-analytics"; 
+// ✅ IMPORT NEW HELPER
+import { getCompanyFeatures } from "@/lib/plan-config";
 
 export const dynamic = 'force-dynamic';
 
@@ -25,13 +26,22 @@ export default async function BusinessAnalyticsPage() {
       slug: true,
       rating: true,
       plan: true,
-      features: true,
+      // ✅ Fetch Override Field for Helper
+      enableAnalytics: true, 
+      // We can keep 'features' if used elsewhere, but analytics logic moves to helper
+      features: true, 
+      isSponsored: true,
     }
   });
 
   if (!company) return <div>Company not found</div>;
 
-  // 2. Fetch Reviews
+  // 2. ✅ CALCULATE EFFECTIVE TIER
+  // This handles: Plan Default (Free/Growth) + Admin Overrides
+  const featureConfig = getCompanyFeatures(company);
+  const analyticsTier = featureConfig.analyticsTier; // "BASIC" | "ADVANCED" | "PRO"
+
+  // 3. Fetch Reviews
   const reviews = await prisma.review.findMany({
     where: { companyId: companyId },
     orderBy: { createdAt: 'desc' },
@@ -45,11 +55,10 @@ export default async function BusinessAnalyticsPage() {
     }
   });
 
-  // 3. ✅ UPDATED: Fetch Aggregated Stats using your helper
-  // This now returns the full 30-day aggregation instead of just one random row
+  // 4. Fetch Stats
   const searchStats = await getSearchAnalytics(companyId);
 
-  // 4. Render
+  // 5. Render
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-8 pb-20">
       <div className="flex justify-between items-start">
@@ -73,11 +82,12 @@ export default async function BusinessAnalyticsPage() {
          </div>
       </div>
 
+      {/* ✅ Pass the computed Tier */}
       <CompanyAnalyticsView 
          company={company}
          reviews={reviews}
-         features={company.features} 
-         searchStats={searchStats} // ✅ Passes the aggregated object
+         analyticsTier={analyticsTier} // 👈 New Prop
+         searchStats={searchStats}
          userRole={session.user.role}
       />
     </div>

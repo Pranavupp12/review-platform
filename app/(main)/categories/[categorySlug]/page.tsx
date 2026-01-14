@@ -38,7 +38,11 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
   const { categorySlug } = await params;
   const resolvedSearchParams = await searchParams;
   const userQuery = resolvedSearchParams.q;
-  const locationFilter = resolvedSearchParams.loc || resolvedSearchParams.zip;
+
+  console.log("Category Page - Search Params:", userQuery, resolvedSearchParams);
+
+  const locationFilter = resolvedSearchParams.loc || resolvedSearchParams.zip || resolvedSearchParams.region ;
+
   const region = (resolvedSearchParams.region as string) || "";
   const sortFilter = resolvedSearchParams.sort;
   const page = Number(resolvedSearchParams.page) || 1;
@@ -49,6 +53,7 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
     claimed: resolvedSearchParams.claimed,
     country: resolvedSearchParams.country,
     sort: sortFilter,
+    q: userQuery,
   }, page);
 
   if (!data) {
@@ -139,10 +144,11 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
                       key={company.id}
                       {...company}
                       badges={company.badges}
+                      isFeatured={true}
                       // Pass context so analytics know this was a sponsored click
                       trackingContext={{
                         query: userQuery || `Category: ${categoryName}`,
-                        location: locationFilter || "Global (Sponsored)",
+                        location: locationFilter || "Global",
                         userRegion: region,
                       }}
                    />

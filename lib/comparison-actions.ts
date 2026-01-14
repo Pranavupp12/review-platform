@@ -57,13 +57,17 @@ export async function getComparisonData(myCompanyId: string, competitorId: strin
     const locMap = new Map<string, number>();
     stats.forEach(s => {
       // Use userRegion if available, else location
-      const loc = s.userRegion && s.userRegion !== 'unknown' ? s.userRegion : s.location;
+      let loc = s.userRegion && s.userRegion !== 'unknown' ? s.userRegion : s.location;
+      loc = loc.toLowerCase().trim();
       locMap.set(loc, (locMap.get(loc) || 0) + s.impressions);
     });
     const topLocations = Array.from(locMap.entries())
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
-      .map(([location, count]) => ({ location, count }));
+      .map(([location, count]) => ({ 
+          location: location.charAt(0).toUpperCase() + location.slice(1), 
+          count 
+      }));
 
     return { totalImpressions, totalClicks, ctr, topQueries, topLocations };
   };

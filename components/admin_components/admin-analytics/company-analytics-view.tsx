@@ -25,18 +25,19 @@ import { ReviewCard } from "@/components/shared/review-card";
 import { ComparisonTab } from "@/components/admin_components/admin-analytics/comparison-tab";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { ALL_FEATURES } from "@/lib/plan-config";
 
+// ✅ UPDATED INTERFACE
 interface CompanyAnalyticsViewProps {
   company: any;
   reviews: any[];
-  features: string[];
   searchStats: any;
   userRole?: string;
+  // We replace the raw 'features' array with the computed Tier
+  analyticsTier?: string; // "BASIC" | "ADVANCED" | "PRO"
+  features?: string[]; // Kept optional for legacy support if needed
 }
 
-// --- HELPER COMPONENTS ---
-
+// --- HELPER COMPONENTS (Unchanged) ---
 const InfoTooltip = ({ text }: { text: string }) => (
   <TooltipProvider delayDuration={300}>
     <UiTooltip>
@@ -87,11 +88,15 @@ function LockedFeatureOverlay({ title, description }: { title: string, descripti
   );
 }
 
-export function CompanyAnalyticsView({ company, reviews, features, searchStats, userRole }: CompanyAnalyticsViewProps) {
+export function CompanyAnalyticsView({ company, reviews, analyticsTier = "BASIC", searchStats, userRole }: CompanyAnalyticsViewProps) {
 
-  // 1. Determine Access Level
-  const safeFeatures = features || [];
-  const hasAdvancedAccess = safeFeatures.includes(ALL_FEATURES.ANALYTICS_ADVANCED);
+  // ✅ 1. Determine Access Level Logic
+  // - If User is ADMIN -> ALWAYS Access
+  // - If Tier is ADVANCED or PRO -> Access
+  const hasAdvancedAccess = 
+      userRole === 'ADMIN' || 
+      analyticsTier === 'ADVANCED' || 
+      analyticsTier === 'PRO';
 
   const [aiData, setAiData] = useState<{
     summary: string;
@@ -119,7 +124,8 @@ export function CompanyAnalyticsView({ company, reviews, features, searchStats, 
         totalReviews: totalReviews,
         searchImpressions: searchStats?.totals?.impressions || 0,
         ctr: Number(searchStats?.totals?.ctr) || 0,
-        adValue: searchStats?.totals?.adSpend || "0.00"
+        adValue: searchStats?.totals?.adSpend || "0.00",
+        adClicks: searchStats?.totals?.adClicks || 0,
       };
       if (reviews.length > 0) {
         const aiResult = await generateCompanyInsight(reviews, metricsData, searchStats?.topQueries || []);
@@ -171,8 +177,7 @@ export function CompanyAnalyticsView({ company, reviews, features, searchStats, 
   const topKeywords = [...keywordAnalysis].sort((a, b) => b.total - a.total).slice(0, 6);
   const riskAlert = keywordAnalysis.filter(k => k.total >= 1 && k.negPct >= 20).sort((a, b) => b.negPct - a.negPct)[0];
 
-  // --- REVIEW GRIDS FILTERING (UPDATED LOGIC) ---
-  
+  // --- REVIEW GRIDS FILTERING ---
   const latestPositive = [...reviews].filter(r => { 
     const keywords = r.keywords || []; 
     const hasSmartPositive = keywords.some((k: string) => k.toLowerCase().includes(':positive')); 
@@ -187,11 +192,9 @@ export function CompanyAnalyticsView({ company, reviews, features, searchStats, 
     return hasSmartNegative || hasLegacyNegative; 
   }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 3);
 
-  // ✅ FIX: Widen the range to capture float values (2.5, 3.5) and integers (3)
   const latestNeutral = [...reviews].filter(r => { 
     const keywords = r.keywords || []; 
     const hasSmartNeutral = keywords.some((k: string) => k.toLowerCase().includes(':neutral')); 
-    // Was: r.starRating === 3. Now: (r.starRating > 2 && r.starRating < 4)
     const hasLegacyNeutral = (r.starRating > 2 && r.starRating < 4) && keywords.some((k: string) => !k.includes(':')); 
     return hasSmartNeutral || hasLegacyNeutral; 
   }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 3);
@@ -260,7 +263,13 @@ export function CompanyAnalyticsView({ company, reviews, features, searchStats, 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
               <MetricCard title="Search Impressions" value={searchStats.totals?.impressions || 0} helperText="Appearances in search." icon={<Eye className="h-4 w-4 text-blue-500" />} />
-              <MetricCard title="Total Clicks" value={searchStats.totals?.clicks || 0} helperText="Clicks to your profile." icon={<MousePointerClick className="h-4 w-4 text-green-500" />} />
+              <MetricCard 
+                  title="Total Clicks" 
+                  value={searchStats.totals?.clicks || 0} 
+                  // ✅ Show breakdown if sponsored, otherwise just total
+                  helperText={company.isSponsored ? `${searchStats.totals?.adClicks || 0} from Sponsored slots` : "Clicks to your profile."} 
+                  icon={<MousePointerClick className="h-4 w-4 text-green-500" />} 
+              />
               <MetricCard title="Click-Through Rate" value={`${searchStats.totals?.ctr || 0}%`} helperText="Percentage of clicks per impression." icon={<Zap className="h-4 w-4 text-yellow-500" />} />
               <MetricCard title="Est. Ad Value" value={`$${searchStats.totals?.adSpend || "0.00"}`} helperText="Monetary value of organic traffic." icon={<DollarSign className="h-4 w-4 text-purple-500" />} />
             </div>
@@ -273,23 +282,81 @@ export function CompanyAnalyticsView({ company, reviews, features, searchStats, 
           </div>
 
           <Card>
-            <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Search className="h-4 w-4 text-blue-500" /> Top Performing Search Queries</CardTitle></CardHeader>
-            <CardContent>
-                <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left"><thead className="bg-gray-50 text-gray-500"><tr><th className="px-4 py-3 font-medium">Search Query / Location</th><th className="px-4 py-3 font-medium">User Region</th><th className="px-4 py-3 font-medium text-right">Impressions</th><th className="px-4 py-3 font-medium text-right">Clicks</th><th className="px-4 py-3 font-medium text-right">CTR</th></tr></thead><tbody className="divide-y divide-gray-100">
-                        {(searchStats.topQueries || []).length > 0 ? (
-                            (searchStats.topQueries || []).map((q: any, i: number) => (
-                                <tr key={i} className="hover:bg-gray-50/50">
-                                    <td className="px-4 py-3 align-top"><div className="flex flex-col"><span className="font-medium text-gray-900 capitalize text-sm">{q.query}</span>{(q.location && q.location !== 'Global') && (<div className="flex items-center gap-1 text-[11px] text-blue-600 bg-blue-50 w-fit px-1.5 py-0.5 rounded border border-blue-100 mt-1"><Search className="h-3 w-3" /> In: {q.location}</div>)}</div></td><td className="px-4 py-3 align-top">{(!q.userRegion || q.userRegion === 'unknown') ? (<span className="inline-flex items-center gap-1 text-xs bg-gray-100 text-gray-400 px-2 py-1 rounded-md border border-gray-200">Unknown</span>) : (<div className="flex items-center gap-1.5 text-xs text-gray-700"><div className="bg-gray-100 p-1 rounded-full text-gray-500"><MapPin className="h-3 w-3" /></div><span className="capitalize font-medium">{q.userRegion}</span></div>)}</td><td className="px-4 py-3 text-right pt-3">{q.impressions || 0}</td><td className="px-4 py-3 text-right pt-3">{q.clicks || 0}</td><td className="px-4 py-3 text-right pt-3 text-blue-600 font-medium">{(((q.clicks || 0) / (q.impressions || 1)) * 100).toFixed(1)}%</td>
-                                </tr>
-                            ))
-                        ) : (
-                            <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">No search query data available yet.</td></tr>
-                        )}
-                    </tbody></table>
-                </div>
-            </CardContent>
-          </Card>
+  <CardHeader>
+    <CardTitle className="flex items-center gap-2 text-base">
+      <Search className="h-4 w-4 text-blue-500" /> Top Performing Search Queries
+    </CardTitle>
+  </CardHeader>
+  <CardContent>
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm text-left">
+        <thead className="bg-gray-50 text-gray-500">
+          <tr>
+            <th className="px-4 py-3 font-medium">Search Query / Location</th>
+            <th className="px-4 py-3 font-medium">User Region</th>
+            <th className="px-4 py-3 font-medium text-right">Impressions</th>
+            <th className="px-4 py-3 font-medium text-right">Total Clicks</th>
+            
+            {/* ✅ CHANGE 1: Conditionally Render Header */}
+            {company.isSponsored && (
+               <th className="px-4 py-3 font-medium text-right text-purple-600">Ad Clicks</th>
+            )}
+            
+            <th className="px-4 py-3 font-medium text-right">CTR</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-100">
+          {(searchStats.topQueries || []).length > 0 ? (
+            (searchStats.topQueries || []).map((q: any, i: number) => (
+              <tr key={i} className="hover:bg-gray-50/50">
+                <td className="px-4 py-3 align-top">
+                  <div className="flex flex-col">
+                    <span className="font-medium text-gray-900 capitalize text-sm">{q.query}</span>
+                    {(q.location && q.location !== 'Global') && (
+                      <div className="flex items-center gap-1 text-[11px] text-blue-600 bg-blue-50 w-fit px-1.5 py-0.5 rounded border border-blue-100 mt-1">
+                        <Search className="h-3 w-3" /> In: {q.location}
+                      </div>
+                    )}
+                  </div>
+                </td>
+                <td className="px-4 py-3 align-top">
+                  {(!q.userRegion || q.userRegion === 'unknown') ? (
+                    <span className="inline-flex items-center gap-1 text-xs bg-gray-100 text-gray-400 px-2 py-1 rounded-md border border-gray-200">Unknown</span>
+                  ) : (
+                    <div className="flex items-center gap-1.5 text-xs text-gray-700">
+                      <div className="bg-gray-100 p-1 rounded-full text-gray-500"><MapPin className="h-3 w-3" /></div>
+                      <span className="capitalize font-medium">{q.userRegion}</span>
+                    </div>
+                  )}
+                </td>
+                <td className="px-4 py-3 text-right pt-3">{q.impressions || 0}</td>
+                <td className="px-4 py-3 text-right pt-3">{q.clicks || 0}</td>
+                
+                {/* ✅ CHANGE 2: Conditionally Render Data Cell */}
+                {company.isSponsored && (
+                    <td className="px-4 py-3 text-right pt-3 font-bold text-purple-600 bg-purple-50/30">
+                        {q.adClicks || 0}
+                    </td>
+                )}
+
+                <td className="px-4 py-3 text-right pt-3 text-blue-600 font-medium">
+                  {(((q.clicks || 0) / (q.impressions || 1)) * 100).toFixed(1)}%
+                </td>
+              </tr>
+            ))
+          ) : (
+            <tr>
+                {/* ✅ CHANGE 3: Dynamic ColSpan */}
+                <td colSpan={company.isSponsored ? 6 : 5} className="px-4 py-8 text-center text-gray-400">
+                    No search query data available yet.
+                </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  </CardContent>
+</Card>
         </div>
       )}
 
@@ -469,7 +536,7 @@ export function CompanyAnalyticsView({ company, reviews, features, searchStats, 
                                 reviewText={<HighlightedText
                                   text={r.comment || r.text || r.content}
                                   keywords={r.keywords?.filter((k: string) =>
-                                    k.toLowerCase().includes(':neutral') || (!k.includes(':') && r.starRating === 3)
+                                    k.toLowerCase().includes(':neutral') || (!k.includes(':') && r.starRating > 2 && r.starRating < 4)
                                   )}
                                   type="neutral"
                                 /> as any}

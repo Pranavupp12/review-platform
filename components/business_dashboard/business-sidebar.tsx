@@ -69,8 +69,9 @@ const BUSINESS_LINKS = [
   { name: "Reviews", href: "/business/dashboard/reviews", icon: Star },
   {name: "Business Updates", href:"/business/dashboard/updates", icon: BellPlusIcon},
   { name: "Analytics", href: "/business/dashboard/analytics", icon: BarChart3 },
-  { name: "Edit Profile", href: "/business/dashboard/settings", icon: Store },
   { name: "Marketing", href: "/business/dashboard/marketing", icon: Megaphone },
+  { name: "Products & Services", href: "/business/dashboard/showcase", icon: Store },
+  { name: "Edit Profile", href: "/business/dashboard/settings", icon: Settings },
 ];
 
 export function BusinessSidebar() {
@@ -164,21 +165,6 @@ export function BusinessSidebar() {
                     </Link>
                   );
                 })}
-              </div>
-
-              {/* Bottom Settings Link */}
-              <div className="p-2 border-t border-white/10 mt-auto">
-                <Link
-                  href="/business/dashboard/settings"
-                  className="flex h-10 w-full flex-row items-center rounded-md px-2 transition hover:bg-white/10 hover:text-white"
-                >
-                  <Settings className="h-5 w-5 shrink-0" />
-                  <motion.li variants={variants}>
-                    {!isCollapsed && (
-                      <p className="ml-3 text-sm font-medium">Settings</p>
-                    )}
-                  </motion.li>
-                </Link>
               </div>
             </div>
           </div>

@@ -3,7 +3,6 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-// ✅ CHANGED: Import the new Manager instead of the old Toggle
 import { PlanManager } from "@/components/admin_components/plan-manager";
 import { PaginationControls } from "@/components/shared/pagination-controls";
 import { PlanFilters } from "@/components/admin_components/page-filters/plan-filters";
@@ -12,7 +11,6 @@ import { Prisma, Plan } from '@prisma/client';
 
 export const metadata = { title: 'Manage Plans - Admin' };
 
-// ✅ Helper to format date as dd/mm/yyyy
 function formatDate(date: Date | null) {
   if (!date) return "N/A";
   return new Date(date).toLocaleDateString("en-GB", {
@@ -22,7 +20,6 @@ function formatDate(date: Date | null) {
   });
 }
 
-// Helper for Badge Colors based on Plan
 function getPlanBadgeColor(plan: Plan) {
   switch (plan) {
     case "GROWTH":
@@ -49,7 +46,6 @@ export default async function ManagePlansPage({ searchParams }: PageProps) {
   const session = await auth();
   
   if (session?.user?.role !== "ADMIN") {
-    // If they are DATA_ENTRY, kick them out
     return redirect("/admin/companies"); 
   }
 
@@ -68,10 +64,7 @@ export default async function ManagePlansPage({ searchParams }: PageProps) {
     where.name = { contains: query, mode: 'insensitive' };
   }
 
-  // ✅ UPDATED: Handle dynamic plan filtering
-  // Assuming your PlanFilters component sends "GROWTH", "SCALE", etc. as query params
   if (plan && plan !== "ALL") {
-    // We cast to Plan to match the Prisma Enum type
     where.plan = plan as Plan;
   }
 
@@ -81,14 +74,22 @@ export default async function ManagePlansPage({ searchParams }: PageProps) {
       orderBy: { createdAt: "desc" },
       skip: skip,
       take: pageSize,
-      // ✅ UPDATED: Select 'features' so we can pass them to the manager
+      // ✅ UPDATED: Select ALL fields relevant to the new Feature System
       select: { 
         id: true, 
         name: true, 
         plan: true, 
-        features: true, // <--- Critical for the new logic
         createdAt: true, 
-        slug: true 
+        slug: true,
+        // Feature Fields (Required for Manager)
+        customEmailLimit: true,
+        customUpdateLimit: true,
+        enableAnalytics: true,
+        enableLeadGen: true,
+        hideCompetitors: true,
+        badges: true,
+        isSponsored: true,
+        sponsoredScope: true
       }
     }),
     prisma.company.count({ where })
@@ -124,7 +125,7 @@ export default async function ManagePlansPage({ searchParams }: PageProps) {
                   <TableHead>Company Name</TableHead>
                   <TableHead>Joined Date</TableHead>
                   <TableHead>Current Plan</TableHead>
-                  <TableHead className="text-right">Manage Features</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -148,12 +149,8 @@ export default async function ManagePlansPage({ searchParams }: PageProps) {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      {/* ✅ UPDATED: New PlanManager Component */}
-                      <PlanManager 
-                        companyId={company.id} 
-                        currentPlan={company.plan} 
-                        currentFeatures={company.features}
-                      />
+                      {/* ✅ UPDATED: Pass the full company object (casted if needed) */}
+                      <PlanManager company={company as any} />
                     </TableCell>
                   </TableRow>
                 ))}

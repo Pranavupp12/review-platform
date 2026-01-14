@@ -36,6 +36,7 @@ export default async function CompanyAnalyticsPage({ params }: PageProps) {
         rating: true,
         plan: true,
         features: true, 
+        isSponsored: true,
       }
     }),
 

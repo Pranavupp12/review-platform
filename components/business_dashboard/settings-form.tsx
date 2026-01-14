@@ -2,6 +2,7 @@
 
 import { useActionState } from 'react';
 import { updateCompanyProfile } from "@/lib/actions";
+import { updateCompanyType, addShowcaseItem, deleteShowcaseItem } from "@/lib/showcase-actions"; 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,13 +14,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, ImageIcon, Save, MapPin, Phone, Mail, Tag } from "lucide-react";
+import { 
+  Loader2, ImageIcon, Save, MapPin, Phone, Mail, Tag, 
+
+} from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { Company } from "@prisma/client";
+import { useForm } from "react-hook-form";
 import { Country, State, City }  from 'country-state-city';
+import { Prisma } from "@prisma/client"; 
+
+// Define Types
+type CompanyWithShowcase = Prisma.CompanyGetPayload<{
+  include: { showcaseItems: true }
+}>;
 
 interface CategoryWithSubs {
   id: string;
@@ -28,17 +38,40 @@ interface CategoryWithSubs {
 }
 
 interface SettingsFormProps {
-  company: Company;
+  company: CompanyWithShowcase;
   categories: CategoryWithSubs[];
 }
+
+// Simple Image Upload Mock
+const ImageUploadPlaceholder = ({ onUpload }: { onUpload: (url: string) => void }) => (
+    <div className="border-2 border-dashed border-gray-200 rounded-lg p-4 text-center cursor-pointer hover:bg-gray-50" onClick={() => {
+        const url = prompt("Enter Image URL (Mock Upload):");
+        if (url) onUpload(url);
+    }}>
+      <ImageIcon className="h-6 w-6 mx-auto text-gray-400" />
+      <span className="text-xs text-gray-500">Click to Upload Image</span>
+    </div>
+);
 
 export function SettingsForm({ company, categories }: SettingsFormProps) {
   const [state, formAction, isPending] = useActionState(updateCompanyProfile, null);
   const router = useRouter();
-
   const [logoPreview, setLogoPreview] = useState<string | null>(company.logoImage);
+  
+  // Showcase State
+  const [showcasePending, setShowcasePending] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [newItemImages, setNewItemImages] = useState<string[]>([]);
+  
+  // Access Logic
+  const hasAccess = company.plan === "GROWTH" || company.plan === "SCALE" || company.plan === "CUSTOM";
+  const companyType = company.companyType || "SERVICE";
 
-  // --- 1. CATEGORY STATE ---
+  const { register: registerItem, handleSubmit: handleSubmitItem, reset: resetItem } = useForm({
+    defaultValues: { name: "", description: "", linkUrl: "" }
+  });
+
+  // Category State
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>(company.categoryId || "");
   const [selectedSubCategoryId, setSelectedSubCategoryId] = useState<string>(company.subCategoryId || "");
 
@@ -46,51 +79,37 @@ export function SettingsForm({ company, categories }: SettingsFormProps) {
     return categories.find(c => c.id === selectedCategoryId)?.subCategories || [];
   }, [selectedCategoryId, categories]);
 
-  // --- 2. LOCATION STATE ---
+  // Location State
   const [selectedCountryISO, setSelectedCountryISO] = useState<string>(""); 
   const [selectedStateISO, setSelectedStateISO] = useState<string>(""); 
   const [selectedCityName, setSelectedCityName] = useState<string>(company.city || "");
 
-  // Memoize lists
   const countries = useMemo(() => Country.getAllCountries(), []);
   const states = useMemo(() => selectedCountryISO ? State.getStatesOfCountry(selectedCountryISO) : [], [selectedCountryISO]);
   const cities = useMemo(() => selectedStateISO ? City.getCitiesOfState(selectedCountryISO, selectedStateISO) : [], [selectedCountryISO, selectedStateISO]);
 
-  // --- 3. FIX: HYDRATE LOCATION DATA ---
-  // This logic runs ONCE on load to match DB Text -> ISO Code
+  // Hydrate Location
   useEffect(() => {
     if (company.country) {
       const dbCountry = company.country.trim().toLowerCase();
-      
-      // 1. Find Country ISO
       const foundCountry = countries.find(
         c => c.name.toLowerCase() === dbCountry || c.isoCode.toLowerCase() === dbCountry
       );
-
       if (foundCountry) {
         setSelectedCountryISO(foundCountry.isoCode);
-        
-        // 2. Find State ISO (Only if country matched)
         if (company.state) {
           const dbState = company.state.trim().toLowerCase();
           const validStates = State.getStatesOfCountry(foundCountry.isoCode);
-          
           const foundState = validStates.find(
             s => s.name.toLowerCase() === dbState || s.isoCode.toLowerCase() === dbState
           );
-
-          if (foundState) {
-            setSelectedStateISO(foundState.isoCode);
-          }
+          if (foundState) setSelectedStateISO(foundState.isoCode);
         }
       }
     }
-    // Also ensure City is set if it exists in DB
     if (company.city) setSelectedCityName(company.city);
+  }, []); 
 
-  }, []); // Run once on mount
-
-  // --- HANDLE SERVER RESPONSE ---
   useEffect(() => {
     if (state?.success) {
       toast.success("Profile updated successfully!");
@@ -102,15 +121,43 @@ export function SettingsForm({ company, categories }: SettingsFormProps) {
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setLogoPreview(URL.createObjectURL(file));
+    if (file) setLogoPreview(URL.createObjectURL(file));
+  };
+
+  const onTypeChange = async (val: string) => {
+    toast.promise(updateCompanyType(company.id, val as any), {
+        loading: "Updating business type...",
+        success: "Updated successfully",
+        error: "Failed to update"
+    });
+  };
+
+  const onItemSubmit = async (data: any) => {
+    setShowcasePending(true);
+    // data includes name, description, and linkUrl
+    const result = await addShowcaseItem(company.id, { ...data, images: newItemImages });
+    if (result.success) {
+        toast.success("Item added successfully");
+        setModalOpen(false);
+        resetItem();
+        setNewItemImages([]);
+    } else {
+        toast.error("Failed to add item");
+    }
+    setShowcasePending(false);
+  };
+
+  const handleDeleteItem = async (id: string) => {
+    if(confirm("Are you sure?")) {
+        await deleteShowcaseItem(id);
+        toast.success("Item deleted");
     }
   };
 
   return (
     <form action={formAction} className="space-y-8 max-w-6xl">
       
-      {/* HIDDEN INPUTS for Non-Form Elements */}
+      {/* HIDDEN INPUTS */}
       <input type="hidden" name="country" value={countries.find(c => c.isoCode === selectedCountryISO)?.name || ""} />
       <input type="hidden" name="state" value={states.find(s => s.isoCode === selectedStateISO)?.name || ""} />
       <input type="hidden" name="city" value={selectedCityName} />
@@ -126,7 +173,6 @@ export function SettingsForm({ company, categories }: SettingsFormProps) {
            </h3>
            <p className="text-sm text-gray-500">Update your company logo.</p>
         </div>
-        
         <div className="space-y-3">
             <Label>Company Logo</Label>
             <div className="flex items-center gap-6">
@@ -155,9 +201,7 @@ export function SettingsForm({ company, categories }: SettingsFormProps) {
              <Tag className="h-5 w-5 text-[#0ABED6]" /> Business Details
            </h3>
         </div>
-
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-           {/* Category Select */}
            <div className="grid gap-2">
               <Label>Category</Label>
               <Select value={selectedCategoryId} onValueChange={(val) => { setSelectedCategoryId(val); setSelectedSubCategoryId(""); }}>
@@ -167,8 +211,6 @@ export function SettingsForm({ company, categories }: SettingsFormProps) {
                 </SelectContent>
               </Select>
            </div>
-
-           {/* SubCategory Select */}
            <div className="grid gap-2">
               <Label>Subcategory</Label>
               <Select value={selectedSubCategoryId} onValueChange={setSelectedSubCategoryId} disabled={!selectedCategoryId}>
@@ -178,7 +220,6 @@ export function SettingsForm({ company, categories }: SettingsFormProps) {
                 </SelectContent>
               </Select>
            </div>
-
            <div className="grid gap-2 md:col-span-2">
               <Label htmlFor="description">About the Business</Label>
               <Textarea 
@@ -191,22 +232,19 @@ export function SettingsForm({ company, categories }: SettingsFormProps) {
         </div>
       </div>
 
-      {/* --- LOCATION (Fixed) --- */}
+      {/* --- LOCATION --- */}
       <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm space-y-6">
         <div>
            <h3 className="text-lg font-bold text-[#000032] flex items-center gap-2">
              <MapPin className="h-5 w-5 text-[#0ABED6]" /> Location
            </h3>
         </div>
-        
         <div className="grid gap-4">
            <div className="grid gap-2">
               <Label htmlFor="address">Address</Label>
               <Input id="address" name="address" defaultValue={company.address || ""} placeholder="123 Business Rd, Suite 100" />
            </div>
-           
            <div className="grid grid-cols-2 gap-4">
-              {/* Country */}
               <div className="grid gap-2">
                  <Label>Country</Label>
                  <Select value={selectedCountryISO} onValueChange={(val) => { setSelectedCountryISO(val); setSelectedStateISO(""); setSelectedCityName(""); }}>
@@ -216,8 +254,6 @@ export function SettingsForm({ company, categories }: SettingsFormProps) {
                    </SelectContent>
                  </Select>
               </div>
-
-              {/* State */}
               <div className="grid gap-2">
                  <Label>State / Province</Label>
                  <Select value={selectedStateISO } onValueChange={(val) => { setSelectedStateISO(val); setSelectedCityName(""); }} disabled={!selectedCountryISO}>
@@ -227,8 +263,6 @@ export function SettingsForm({ company, categories }: SettingsFormProps) {
                    </SelectContent>
                  </Select>
               </div>
-
-              {/* City */}
               <div className="grid gap-2">
                  <Label>City</Label>
                  <Select value={selectedCityName} onValueChange={setSelectedCityName} disabled={!selectedStateISO}>
@@ -238,8 +272,6 @@ export function SettingsForm({ company, categories }: SettingsFormProps) {
                    </SelectContent>
                  </Select>
               </div>
-
-              {/* ✅ ADDED: Sub City / Area */}
               <div className="grid gap-2">
                  <Label htmlFor="subCity">Sub City / Area</Label>
                  <Input 
@@ -250,7 +282,6 @@ export function SettingsForm({ company, categories }: SettingsFormProps) {
                    className="bg-white"
                  />
               </div>
-
            </div>
         </div>
       </div>
@@ -262,7 +293,6 @@ export function SettingsForm({ company, categories }: SettingsFormProps) {
              <Phone className="h-5 w-5 text-[#0ABED6]" /> Public Contact
            </h3>
         </div>
-
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
            <div className="grid gap-2">
               <Label htmlFor="publicEmail">Public Email</Label>
@@ -272,7 +302,6 @@ export function SettingsForm({ company, categories }: SettingsFormProps) {
                  <Input id="publicEmail" name="publicEmail" defaultValue={company.contact?.email || ""} className="pl-10" />
               </div>
            </div>
-           
            <div className="grid gap-2">
               <Label htmlFor="phoneNumber">Phone Number</Label>
               <div className="relative">
@@ -281,7 +310,6 @@ export function SettingsForm({ company, categories }: SettingsFormProps) {
                  <Input id="phoneNumber" name="phoneNumber" defaultValue={company.contact?.phone || ""} className="pl-10" />
               </div>
            </div>
-
            <div className="grid gap-2 md:col-span-2">
               <Label htmlFor="websiteUrl">Website</Label>
               <Input id="websiteUrl" name="websiteUrl" defaultValue={company.websiteUrl || ""} />

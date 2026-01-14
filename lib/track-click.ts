@@ -15,6 +15,7 @@ export async function trackSearchImpression(
   query: string, 
   location: string = 'global',
   userRegion: string = 'unknown'
+  
 ) {
   if (!companyId || !query) return;
   const today = getTodayNormalized();
@@ -51,7 +52,8 @@ export async function trackSearchClick(
   companyId: string, 
   query: string, 
   location: string = 'global',
-  userRegion: string = 'unknown'
+  userRegion: string = 'unknown',
+  isSponsored: boolean = false,
 ) {
   if (!companyId || !query) return;
   const today = getTodayNormalized();
@@ -67,7 +69,10 @@ export async function trackSearchClick(
           date: today
         }
       },
-      update: { clicks: { increment: 1 } },
+      update: {  
+        clicks: { increment: 1 }, 
+        adClicks: isSponsored ? { increment: 1 } : undefined
+      },
       create: {
         companyId,
         query: query.toLowerCase().trim(),
@@ -75,7 +80,8 @@ export async function trackSearchClick(
         userRegion: userRegion || "unknown",
         date: today,
         impressions: 1, // Self-healing
-        clicks: 1
+        clicks: 1,
+        adClicks: isSponsored ? 1 : 0
       }
     });
   } catch (error) {
