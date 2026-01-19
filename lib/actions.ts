@@ -152,7 +152,6 @@ export async function socialLogin(formData: FormData) {
 }
 
 
-// --- 1. REVIEW ACTION ---
 export async function createReview(prevState: any, formData: FormData) {
   const session = await auth();
   const userId = session?.user?.id;
@@ -195,13 +194,25 @@ export async function createReview(prevState: any, formData: FormData) {
       results.forEach(url => { if (url) uploadedImageUrls.push(url) });
     }
 
-    // ✅ 1. Generate Smart Keywords (Now returns { topic, sentiment, snippet })
-    const rawAiKeywords = await generateReviewKeywords(content);
+    // ✅ KEY FIX: Keyword Generation
+    console.log("Generating keywords for content:", content);
+    let formattedKeywords: string[] = [];
 
-    // ✅ 2. Format as Strings for Database
-    const formattedKeywords = rawAiKeywords.map((k: any) => 
-      `${k.topic}:${k.sentiment}:${k.snippet}`
-    );
+    try {
+      // Your function ALREADY returns strings like "staff:positive:great service"
+      // So we just use the result directly.
+      const aiKeywords = await generateReviewKeywords(content);
+      
+      console.log("AI Keywords Generated:", aiKeywords);
+      
+      if (Array.isArray(aiKeywords)) {
+        formattedKeywords = aiKeywords;
+      }
+    } catch (aiError) {
+      console.error("AI Generation Warning (Saving review anyway):", aiError);
+      // We proceed with empty keywords so the review isn't blocked
+      formattedKeywords = []; 
+    }
 
     // 3. Save to Database
     await prisma.review.create({
@@ -213,7 +224,8 @@ export async function createReview(prevState: any, formData: FormData) {
         companyId: companyId,
         userId: userId,
         relatedImages: uploadedImageUrls, 
-        keywords: formattedKeywords, // Uses the new triple format
+        // ✅ Save the correctly formatted strings
+        keywords: formattedKeywords, 
       },
     });
 

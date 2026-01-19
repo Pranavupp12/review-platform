@@ -12,6 +12,9 @@ export default async function BusinessSettingsPage() {
   // 1. Fetch Company Data
   const company = await prisma.company.findUnique({
     where: { id: session.user.companyId },
+    include: {
+        showcaseItems: true // <--- CRITICAL ADDITION
+    }
   });
 
   if (!company) return <div>Company not found</div>;
