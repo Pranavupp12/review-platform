@@ -1,12 +1,11 @@
-// components/home_components/hero-review-card.tsx
-
 import Link from 'next/link';
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Star, StarHalf } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from "date-fns";
 import { BlockRating } from '../shared/block-rating';
+// ✅ Import the Translator Component
+import { TranslatableText } from "@/components/shared/translatable-text";
 
 type HeroReviewCardProps = {
   userName: string;
@@ -38,18 +37,15 @@ export function HeroReviewCard({
   className,
 }: HeroReviewCardProps) {
   
-  // Date Formatting
   const createdDate = createdAt ? new Date(createdAt) : new Date();
   const displayDate = format(createdDate, "MMM d, yyyy");
   
   const experienceDate = dateOfExperience ? new Date(dateOfExperience) : new Date();
   const displayExpDate = format(experienceDate, "MMM d, yyyy");
 
-
   return (
     <Link 
       href={`/company/${companySlug}`}
-      // FIX: Enforce strict width (w-[320px]) so it never stretches
       className={cn(
         "block w-[320px] bg-white rounded-md p-5 border border-gray-200 transition-all duration-300 hover:-translate-y-1 cursor-pointer",
         className
@@ -63,8 +59,11 @@ export function HeroReviewCard({
             <AvatarFallback className="text-xs">{userInitials}</AvatarFallback>
           </Avatar>
           <div className="flex flex-col">
-            <span className="font-bold text-gray-900 text-sm line-clamp-1">{userName}</span>
-            <span className="text-[10px] text-gray-400">{displayDate}</span>
+            <span className="font-bold text-gray-900 text-sm line-clamp-1"><TranslatableText text={userName}/></span>
+            {/* ✅ Translated Date */}
+            <span className="text-[10px] text-gray-400">
+              <TranslatableText text={displayDate} />
+            </span>
           </div>
         </div>
       </div>
@@ -72,15 +71,16 @@ export function HeroReviewCard({
       {/* Stars */}
       <div className="mb-2"><BlockRating value={rating} size="sm"/></div>
 
-      {/* Content */}
+      {/* ✅ TRANSLATABLE CONTENT with line-clamp-3 */}
       <p className="text-gray-600 text-xs leading-relaxed line-clamp-3 mb-3 min-h-[3rem]">
-        {reviewText}
+        <TranslatableText text={reviewText} />
       </p>
 
       {/* Date Pill */}
       <div className="mb-4">
-        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium bg-gray-100 text-gray-500 border border-gray-100">
-           Date of Experience: {displayExpDate}
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-gray-100 text-gray-500 border border-gray-100">
+           {/* ✅ Translated Label & Value */}
+           <TranslatableText text="Date of Experience" />: <TranslatableText text={displayExpDate} />
         </span>
       </div>
 
@@ -94,7 +94,10 @@ export function HeroReviewCard({
             )}
         </div>
         <div className="min-w-0">
-          <p className="font-semibold text-gray-800 text-xs truncate">{companyName}</p>
+          {/* ✅ Translated Company Name */}
+          <div className="font-semibold text-gray-800 text-xs truncate">
+             <TranslatableText text={companyName} />
+          </div>
           <p className="text-[10px] text-gray-400 truncate">{companyDomain}</p>
         </div>
       </div>

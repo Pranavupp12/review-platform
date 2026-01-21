@@ -12,6 +12,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { signOut } from 'next-auth/react';
 import { LogOut, LayoutDashboard, Settings } from 'lucide-react';
 import { NotificationBell } from '@/components/layout/notification-bell';
+// ✅ Import Translation Components
+import { LanguageSelector } from "@/components/shared/language-selector";
+import { TranslatableText } from "@/components/shared/translatable-text";
 
 type NavLink = {
   label: string;
@@ -88,7 +91,7 @@ export function Header({ user, variant = 'user' }: HeaderProps) {
   return (
     <header
       className={cn('sticky top-0 z-50 w-full border-b border-transparent transition-all duration-300', {
-        'bg-gray-50 border-gray-200': scrolled, // Added blur for nicer effect
+        'bg-gray-50 border-gray-200': scrolled, 
         'bg-gray-50': !scrolled
       })}
     >
@@ -107,11 +110,18 @@ export function Header({ user, variant = 'user' }: HeaderProps) {
               )}
               href={link.href}
             >
-              {link.label}
+              {/* ✅ Translate Menu Links */}
+              <TranslatableText text={link.label} />
             </Link>
           ))}
 
           <div className="flex items-center gap-2 pl-4 border-l border-gray-200">
+            
+            {/* ✅ Add Language Selector (Desktop) */}
+            <div className="mr-2 scale-90">
+                <LanguageSelector />
+            </div>
+
             {user ? (
               <div className="flex items-center gap-2">
                 <NotificationBell 
@@ -129,22 +139,26 @@ export function Header({ user, variant = 'user' }: HeaderProps) {
                 {isBusiness ? (
                   <>
                     <Link href="/business/login">
-                      <Button variant="ghost" className="font-semibold text-gray-700">Log in</Button>
+                      <Button variant="ghost" className="font-semibold text-gray-700">
+                        <TranslatableText text="Log in" />
+                      </Button>
                     </Link>
                     <Link href="/business/signup?new=true">
                       <Button className="rounded-full bg-[#0ABED6] hover:bg-[#0ABED6]/80 text-white px-6 font-semibold shadow-sm">
-                        Create Free Account
+                        <TranslatableText text="Create Free Account" />
                       </Button>
                     </Link>
                   </>
                 ) : (
                   <>
                     <Link href="/login">
-                      <Button variant="ghost" className="font-semibold text-gray-700">Log In</Button>
+                      <Button variant="ghost" className="font-semibold text-gray-700">
+                         <TranslatableText text="Log In" />
+                      </Button>
                     </Link>
                     <Link href="/business">
                       <Button className="rounded-full bg-[#0ABED6] hover:bg-[#0ABED6]/80 text-white px-6 font-semibold shadow-sm">
-                        Sign in for Business
+                        <TranslatableText text="Sign in for Business" />
                       </Button>
                     </Link>
                   </>
@@ -189,6 +203,14 @@ export function Header({ user, variant = 'user' }: HeaderProps) {
             </div>
           )}
 
+          {/* ✅ Add Language Selector (Mobile - Top) */}
+          <div className="mb-6">
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Language</p>
+            <div className="flex justify-start">
+               <LanguageSelector />
+            </div>
+          </div>
+
           <div className="flex flex-col gap-4">
             {links.map((link) => (
               <Link
@@ -197,7 +219,8 @@ export function Header({ user, variant = 'user' }: HeaderProps) {
                 className="text-lg font-medium text-gray-600 hover:text-[#0ABED6] transition-colors"
                 onClick={() => setOpen(false)}
               >
-                {link.label}
+                {/* ✅ Translate Mobile Links */}
+                <TranslatableText text={link.label} />
               </Link>
             ))}
           </div>
@@ -211,7 +234,7 @@ export function Header({ user, variant = 'user' }: HeaderProps) {
                   onClick={() => setOpen(false)}
                 >
                   <LayoutDashboard className="h-5 w-5 text-[#0ABED6]" />
-                  My Dashboard
+                  <TranslatableText text="My Dashboard" />
                 </Link>
                 <Link
                   href="/dashboard/settings"
@@ -219,14 +242,14 @@ export function Header({ user, variant = 'user' }: HeaderProps) {
                   onClick={() => setOpen(false)}
                 >
                   <Settings className="h-5 w-5 text-gray-500" />
-                  Settings
+                  <TranslatableText text="Settings" />
                 </Link>
                 <button
                   onClick={() => { signOut({ callbackUrl: '/' }); setOpen(false); }}
                   className="flex items-center gap-2 text-red-600 font-medium p-2 hover:bg-red-50 rounded-md w-full text-left"
                 >
                   <LogOut className="h-5 w-5" />
-                  Log out
+                  <TranslatableText text="Log out" />
                 </button>
               </div>
             ) : (
@@ -234,22 +257,26 @@ export function Header({ user, variant = 'user' }: HeaderProps) {
                 {isBusiness ? (
                    <>
                      <Link href="/business/login" onClick={() => setOpen(false)}>
-                       <Button variant="outline" className="w-full h-12 text-base hover:bg-gray-200">Log in</Button>
+                       <Button variant="outline" className="w-full h-12 text-base hover:bg-gray-200">
+                          <TranslatableText text="Log in" />
+                       </Button>
                      </Link>
                      <Link href="/business/signup?new=true" onClick={() => setOpen(false)}>
                        <Button className="w-full h-12 text-base bg-[#0ABED6] hover:bg-[#0ABED6]/90 text-white">
-                         Create Free Account
+                         <TranslatableText text="Create Free Account" />
                        </Button>
                      </Link>
                    </>
                 ) : (
                    <>
                      <Link href="/login" onClick={() => setOpen(false)}>
-                       <Button variant="outline" className="w-full h-12 text-base hover:bg-gray-200">Log In</Button>
+                       <Button variant="outline" className="w-full h-12 text-base hover:bg-gray-200">
+                          <TranslatableText text="Log In" />
+                       </Button>
                      </Link>
                      <Link href="/business" onClick={() => setOpen(false)}>
                        <Button className="w-full h-12 text-base bg-[#0ABED6] hover:bg-[#0ABED6]/90 text-white">
-                         Sign in for Business
+                         <TranslatableText text="Sign in for Business" />
                        </Button>
                      </Link>
                    </>

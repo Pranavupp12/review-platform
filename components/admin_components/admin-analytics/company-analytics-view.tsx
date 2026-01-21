@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
@@ -10,7 +10,8 @@ import {
   TrendingUp, MessageSquare, AlertTriangle, ThumbsUp, ThumbsDown,
   Lightbulb, Sparkles, BookOpen, Lock,
   Zap, Eye, MousePointerClick, DollarSign, Search, Info, MapPin,
-  Scale, Phone, FileText, Users, ArrowUpCircle
+  Scale, Phone, FileText, Users, ArrowUpCircle,
+  ChevronLeft, ChevronRight, Loader2, Filter // ✅ Added Filter Icon
 } from "lucide-react";
 import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 import { generateCompanyInsight } from "@/lib/search-action";
@@ -25,19 +26,26 @@ import { ReviewCard } from "@/components/shared/review-card";
 import { ComparisonTab } from "@/components/admin_components/admin-analytics/comparison-tab";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { Input } from "@/components/ui/input";
+import { getSearchAnalytics } from "@/lib/get-advance-analytics";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"; // ✅ Import Select
 
-// ✅ UPDATED INTERFACE
 interface CompanyAnalyticsViewProps {
   company: any;
   reviews: any[];
   searchStats: any;
   userRole?: string;
-  // We replace the raw 'features' array with the computed Tier
-  analyticsTier?: string; // "BASIC" | "ADVANCED" | "PRO"
-  features?: string[]; // Kept optional for legacy support if needed
+  analyticsTier?: string; 
+  features?: string[];
 }
 
-// --- HELPER COMPONENTS (Unchanged) ---
+// ... (Keep Helper Components InfoTooltip, HighlightedText, CustomChartTooltip, LockedFeatureOverlay UNCHANGED) ...
 const InfoTooltip = ({ text }: { text: string }) => (
   <TooltipProvider delayDuration={300}>
     <UiTooltip>
@@ -90,9 +98,6 @@ function LockedFeatureOverlay({ title, description }: { title: string, descripti
 
 export function CompanyAnalyticsView({ company, reviews, analyticsTier = "BASIC", searchStats, userRole }: CompanyAnalyticsViewProps) {
 
-  // ✅ 1. Determine Access Level Logic
-  // - If User is ADMIN -> ALWAYS Access
-  // - If Tier is ADVANCED or PRO -> Access
   const hasAdvancedAccess = 
       userRole === 'ADMIN' || 
       analyticsTier === 'ADVANCED' || 
@@ -108,7 +113,17 @@ export function CompanyAnalyticsView({ company, reviews, analyticsTier = "BASIC"
 
   const [aiLoading, setAiLoading] = useState(true);
 
-  // --- DATA PROCESSING ---
+  // --- TABLE STATE ---
+  const [tableData, setTableData] = useState(searchStats?.topQueries || []);
+  const [tablePagination, setTablePagination] = useState(searchStats?.pagination || { currentPage: 1, totalPages: 1, totalItems: 0 });
+  const [tableSearch, setTableSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isTableLoading, setIsTableLoading] = useState(false);
+  
+  // ✅ NEW: Sort State (Default varies by sponsorship)
+  const [tableSort, setTableSort] = useState(company.isSponsored ? "adClicks" : "clicks");
+
+  // --- DATA PROCESSING (Metrics) ---
   const totalReviews = reviews.length;
   const positiveReviews = reviews.filter(r => r.starRating >= 4).length;
   const negativeReviews = reviews.filter(r => r.starRating <= 2).length;
@@ -116,7 +131,6 @@ export function CompanyAnalyticsView({ company, reviews, analyticsTier = "BASIC"
   const currentScore = company.rating || 0;
 
   useEffect(() => {
-    // Generate AI for all (Basic Trend Analysis is Free)
     const generateAi = async () => {
       const metricsData = {
         trustScore: currentScore,
@@ -136,7 +150,31 @@ export function CompanyAnalyticsView({ company, reviews, analyticsTier = "BASIC"
     generateAi();
   }, [reviews, company.id, searchStats]);
 
-  // --- CHART DATA PREP ---
+  // --- FETCH TABLE DATA ---
+  const fetchTableData = useCallback(async () => {
+    setIsTableLoading(true);
+    try {
+        // ✅ Pass tableSort to server action
+        const result = await getSearchAnalytics(company.id, currentPage, 5, tableSearch, tableSort);
+        setTableData(result.topQueries);
+        setTablePagination(result.pagination);
+    } catch (error) {
+        console.error("Failed to fetch analytics table", error);
+    } finally {
+        setIsTableLoading(false);
+    }
+  }, [company.id, currentPage, tableSearch, tableSort]);
+
+  // Debounced fetch
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+        fetchTableData();
+    }, 300);
+    return () => clearTimeout(timeoutId);
+  }, [fetchTableData]);
+
+  // ... (Chart Data Prep & Keyword Analysis & Grids Unchanged) ...
+  // (Paste the TrendData, KeywordMap, Review Filtering logic here from previous code to keep it concise)
   const trendData = [];
   let previousScore = 0;
   for (let i = 5; i >= 0; i--) {
@@ -151,7 +189,6 @@ export function CompanyAnalyticsView({ company, reviews, analyticsTier = "BASIC"
     trendData.push({ month: monthLabel, score: monthlyAvg, reviews: monthlyReviews.length });
   }
 
-  // --- KEYWORD ANALYSIS ---
   const keywordMap: Record<string, { total: number; positive: number; negative: number; neutral: number; sumRating: number }> = {};
   reviews.forEach(r => {
     const rawKeywords = r.keywords || [];
@@ -177,7 +214,6 @@ export function CompanyAnalyticsView({ company, reviews, analyticsTier = "BASIC"
   const topKeywords = [...keywordAnalysis].sort((a, b) => b.total - a.total).slice(0, 6);
   const riskAlert = keywordAnalysis.filter(k => k.total >= 1 && k.negPct >= 20).sort((a, b) => b.negPct - a.negPct)[0];
 
-  // --- REVIEW GRIDS FILTERING ---
   const latestPositive = [...reviews].filter(r => { 
     const keywords = r.keywords || []; 
     const hasSmartPositive = keywords.some((k: string) => k.toLowerCase().includes(':positive')); 
@@ -199,11 +235,12 @@ export function CompanyAnalyticsView({ company, reviews, analyticsTier = "BASIC"
     return hasSmartNeutral || hasLegacyNeutral; 
   }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 3);
 
+
   return (
     <div className="space-y-8">
-
-      {/* --- SECTION 1: KPI CARDS --- */}
+      {/* --- SECTION 1: KPI CARDS (Unchanged) --- */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* ... (KPI Cards Code) ... */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium flex items-center">TrustScore <InfoTooltip text="Score based on review ratings and recency." /></CardTitle>
@@ -251,22 +288,16 @@ export function CompanyAnalyticsView({ company, reviews, analyticsTier = "BASIC"
         </Card>
       </div>
 
-      {/* --- SECTION 2: SEARCH & PPC (Locked/Hidden based on plan) --- */}
+      {/* --- SECTION 2: SEARCH TABLE (UPDATED) --- */}
       {hasAdvancedAccess && searchStats && (
         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
-          <div className="flex items-center gap-2">
-             <Zap className="h-5 w-5 text-yellow-500 fill-yellow-500" />
-             <h2 className="text-xl font-bold text-gray-900">Search & PPC Performance</h2>
-             <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded border border-purple-200 font-medium">Growth Feature</span>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+           {/* ... Metric Cards ... */}
+           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
               <MetricCard title="Search Impressions" value={searchStats.totals?.impressions || 0} helperText="Appearances in search." icon={<Eye className="h-4 w-4 text-blue-500" />} />
               <MetricCard 
                   title="Total Clicks" 
                   value={searchStats.totals?.clicks || 0} 
-                  // ✅ Show breakdown if sponsored, otherwise just total
                   helperText={company.isSponsored ? `${searchStats.totals?.adClicks || 0} from Sponsored slots` : "Clicks to your profile."} 
                   icon={<MousePointerClick className="h-4 w-4 text-green-500" />} 
               />
@@ -281,86 +312,159 @@ export function CompanyAnalyticsView({ company, reviews, analyticsTier = "BASIC"
             </div>
           </div>
 
-          <Card>
-  <CardHeader>
-    <CardTitle className="flex items-center gap-2 text-base">
-      <Search className="h-4 w-4 text-blue-500" /> Top Performing Search Queries
-    </CardTitle>
-  </CardHeader>
-  <CardContent>
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm text-left">
-        <thead className="bg-gray-50 text-gray-500">
-          <tr>
-            <th className="px-4 py-3 font-medium">Search Query / Location</th>
-            <th className="px-4 py-3 font-medium">User Region</th>
-            <th className="px-4 py-3 font-medium text-right">Impressions</th>
-            <th className="px-4 py-3 font-medium text-right">Total Clicks</th>
-            
-            {/* ✅ CHANGE 1: Conditionally Render Header */}
-            {company.isSponsored && (
-               <th className="px-4 py-3 font-medium text-right text-purple-600">Ad Clicks</th>
-            )}
-            
-            <th className="px-4 py-3 font-medium text-right">CTR</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-100">
-          {(searchStats.topQueries || []).length > 0 ? (
-            (searchStats.topQueries || []).map((q: any, i: number) => (
-              <tr key={i} className="hover:bg-gray-50/50">
-                <td className="px-4 py-3 align-top">
-                  <div className="flex flex-col">
-                    <span className="font-medium text-gray-900 capitalize text-sm">{q.query}</span>
-                    {(q.location && q.location !== 'Global') && (
-                      <div className="flex items-center gap-1 text-[11px] text-blue-600 bg-blue-50 w-fit px-1.5 py-0.5 rounded border border-blue-100 mt-1">
-                        <Search className="h-3 w-3" /> In: {q.location}
-                      </div>
-                    )}
-                  </div>
-                </td>
-                <td className="px-4 py-3 align-top">
-                  {(!q.userRegion || q.userRegion === 'unknown') ? (
-                    <span className="inline-flex items-center gap-1 text-xs bg-gray-100 text-gray-400 px-2 py-1 rounded-md border border-gray-200">Unknown</span>
-                  ) : (
-                    <div className="flex items-center gap-1.5 text-xs text-gray-700">
-                      <div className="bg-gray-100 p-1 rounded-full text-gray-500"><MapPin className="h-3 w-3" /></div>
-                      <span className="capitalize font-medium">{q.userRegion}</span>
+           <Card>
+            <CardHeader>
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                        <Search className="h-4 w-4 text-blue-500" /> Top Performing Search Queries
+                    </CardTitle>
+                    
+                    <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+                        {/* ✅ NEW: Sorting Dropdown */}
+                        <Select value={tableSort} onValueChange={(val) => { setTableSort(val); setCurrentPage(1); }}>
+                          <SelectTrigger className="w-full sm:w-[180px] h-9 bg-white">
+                            <Filter className="h-3.5 w-3.5 mr-2 text-gray-400" />
+                            <SelectValue placeholder="Sort by" />
+                          </SelectTrigger>
+                          <SelectContent align="end">
+                            <SelectItem value="impressions">Highest Impressions</SelectItem>
+                            
+                            {/* ✅ CONDITIONAL OPTIONS */}
+                            {company.isSponsored ? (
+                                <SelectItem value="adClicks">Highest Ad Clicks</SelectItem>
+                            ) : (
+                                <SelectItem value="clicks">Highest Clicks</SelectItem>
+                            )}
+                            
+                            <SelectItem value="ctr">Highest CTR</SelectItem>
+                          </SelectContent>
+                        </Select>
+
+                        {/* Search Input */}
+                        <div className="relative w-full sm:w-64">
+                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                            <Input 
+                                placeholder="Filter queries..." 
+                                className="pl-9 h-9"
+                                value={tableSearch}
+                                onChange={(e) => {
+                                    setTableSearch(e.target.value);
+                                    setCurrentPage(1);
+                                }}
+                            />
+                        </div>
                     </div>
-                  )}
-                </td>
-                <td className="px-4 py-3 text-right pt-3">{q.impressions || 0}</td>
-                <td className="px-4 py-3 text-right pt-3">{q.clicks || 0}</td>
+                </div>
+            </CardHeader>
+            <CardContent>
+                <div className="relative overflow-x-auto min-h-[200px]">
                 
-                {/* ✅ CHANGE 2: Conditionally Render Data Cell */}
-                {company.isSponsored && (
-                    <td className="px-4 py-3 text-right pt-3 font-bold text-purple-600 bg-purple-50/30">
-                        {q.adClicks || 0}
-                    </td>
+                {isTableLoading && (
+                    <div className="absolute inset-0 bg-white/60 z-10 flex items-center justify-center">
+                        <Loader2 className="h-6 w-6 text-blue-500 animate-spin" />
+                    </div>
                 )}
 
-                <td className="px-4 py-3 text-right pt-3 text-blue-600 font-medium">
-                  {(((q.clicks || 0) / (q.impressions || 1)) * 100).toFixed(1)}%
-                </td>
-              </tr>
-            ))
-          ) : (
-            <tr>
-                {/* ✅ CHANGE 3: Dynamic ColSpan */}
-                <td colSpan={company.isSponsored ? 6 : 5} className="px-4 py-8 text-center text-gray-400">
-                    No search query data available yet.
-                </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
-  </CardContent>
-</Card>
+                <table className="w-full text-sm text-left">
+                    <thead className="bg-gray-50 text-gray-500">
+                    <tr>
+                        <th className="px-4 py-3 font-medium">Search Query / Location</th>
+                        <th className="px-4 py-3 font-medium">User Region</th>
+                        <th className="px-4 py-3 font-medium text-right">Impressions</th>
+                        
+                        {/* ✅ CONDITIONAL HEADER: Show Ad Clicks OR Total Clicks */}
+                        {company.isSponsored ? (
+                             <th className="px-4 py-3 font-medium text-right text-purple-600">Ad Clicks</th>
+                        ) : (
+                             <th className="px-4 py-3 font-medium text-right">Total Clicks</th>
+                        )}
+                        
+                        <th className="px-4 py-3 font-medium text-right">CTR</th>
+                    </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                    {tableData.length > 0 ? (
+                        tableData.map((q: any, i: number) => (
+                        <tr key={i} className="hover:bg-gray-50/50">
+                            <td className="px-4 py-3 align-top">
+                            <div className="flex flex-col">
+                                <span className="font-medium text-gray-900 capitalize text-sm">{q.query}</span>
+                                {(q.location && q.location !== 'Global') && (
+                                <div className="flex items-center gap-1 text-[11px] text-blue-600 bg-blue-50 w-fit px-1.5 py-0.5 rounded border border-blue-100 mt-1">
+                                    <Search className="h-3 w-3" /> In: {q.location}
+                                </div>
+                                )}
+                            </div>
+                            </td>
+                            <td className="px-4 py-3 align-top">
+                                {(!q.userRegion || q.userRegion === 'unknown') ? (
+                                    <span className="inline-flex items-center gap-1 text-xs bg-gray-100 text-gray-400 px-2 py-1 rounded-md border border-gray-200">Unknown</span>
+                                ) : (
+                                    <div className="flex items-center gap-1.5 text-xs text-gray-700">
+                                    <div className="bg-gray-100 p-1 rounded-full text-gray-500"><MapPin className="h-3 w-3" /></div>
+                                    <span className="capitalize font-medium">{q.userRegion}</span>
+                                    </div>
+                                )}
+                            </td>
+                            <td className="px-4 py-3 text-right pt-3">{q.impressions}</td>
+                            
+                            {/* ✅ CONDITIONAL DATA CELL */}
+                            {company.isSponsored ? (
+                                <td className="px-4 py-3 text-right pt-3 font-bold text-purple-600 bg-purple-50/30">
+                                    {q.adClicks || 0}
+                                </td>
+                            ) : (
+                                <td className="px-4 py-3 text-right pt-3">
+                                    {q.clicks || 0}
+                                </td>
+                            )}
+
+                            <td className="px-4 py-3 text-right pt-3 text-blue-600 font-medium">
+                                {q.ctr ? q.ctr + '%' : (q.impressions > 0 ? ((q.clicks / q.impressions) * 100).toFixed(1) + '%' : '0.0%')}
+                            </td>
+                        </tr>
+                        ))
+                    ) : (
+                        <tr>
+                            <td colSpan={company.isSponsored ? 5 : 5} className="px-4 py-8 text-center text-gray-400">
+                                {isTableLoading ? "Loading..." : "No matching queries found."}
+                            </td>
+                        </tr>
+                    )}
+                    </tbody>
+                </table>
+                </div>
+
+                <div className="flex items-center justify-between border-t mt-4 pt-4">
+                    <p className="text-xs text-gray-500">
+                        Page {tablePagination.currentPage} of {tablePagination.totalPages}
+                    </p>
+                    <div className="flex items-center gap-2">
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                            disabled={currentPage === 1 || isTableLoading}
+                        >
+                            <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => setCurrentPage(p => Math.min(tablePagination.totalPages, p + 1))}
+                            disabled={currentPage === tablePagination.totalPages || isTableLoading}
+                        >
+                            <ChevronRight className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </div>
+            </CardContent>
+           </Card>
         </div>
       )}
 
-      {/* --- SECTION 3: EXECUTIVE SUMMARY --- */}
+      {/* --- SECTION 3: EXECUTIVE SUMMARY (Unchanged) --- */}
+      {/* ... (Paste Executive Summary & Tabs Sections Code from previous snippet) ... */}
       {hasAdvancedAccess && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100">
           <div className="lg:col-span-2 bg-gradient-to-r from-[#000032] to-[#000050] rounded-xl p-6 text-white shadow-lg relative overflow-hidden min-h-[180px]">

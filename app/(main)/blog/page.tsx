@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import { FeaturedBlogCard } from "@/components/blog-components/featured-blog-card";
 import { BlogCard } from "@/components/blog-components/blog-card";
+// ✅ Import Translator
+import { TranslatableText } from "@/components/shared/translatable-text";
 
 export const dynamic = 'force-dynamic'; 
 
@@ -33,7 +35,7 @@ export default async function BlogPage() {
             
             {/* Left: Heading */}
             <h1 className="text-xl font-bold text-gray-900 shrink-0">
-              Help Blogs
+               <TranslatableText text="Help Blogs" />
             </h1>
 
             {/* Right: Nav Links */}
@@ -42,7 +44,7 @@ export default async function BlogPage() {
                   href="/blog" 
                   className="text-sm font-medium text-[#0ABED6] whitespace-nowrap transition-colors"
               >
-                  Featured
+                  <TranslatableText text="Featured" />
               </Link>
               {categories.length > 0 ? (
                   categories.map((cat) => (
@@ -51,11 +53,13 @@ export default async function BlogPage() {
                       href={`#${cat.toLowerCase()}`} 
                       className="text-sm font-medium text-gray-500 hover:text-[#0ABED6] whitespace-nowrap transition-colors"
                   >
-                      {cat}
+                      <TranslatableText text={cat} />
                   </Link>
                   ))
               ) : (
-                  <span className="text-sm text-gray-400 italic">No categories</span>
+                  <span className="text-sm text-gray-400 italic">
+                     <TranslatableText text="No categories" />
+                  </span>
               )}
             </div>
 
@@ -74,8 +78,8 @@ export default async function BlogPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-20">
         {categorySections.length === 0 && (
             <div className="text-center py-20 text-gray-500">
-                <h2 className="text-xl font-semibold">No blogs found</h2>
-                <p>Check back later for updates!</p>
+                <h2 className="text-xl font-semibold"><TranslatableText text="No blogs found" /></h2>
+                <p><TranslatableText text="Check back later for updates!" /></p>
             </div>
         )}
 
@@ -85,10 +89,12 @@ export default async function BlogPage() {
               
               {/* Section Header */}
               <div className="flex items-center justify-between mb-8 border-b border-gray-100 pb-4">
-                <h2 className="text-2xl font-bold text-gray-900">{section.name}</h2>
+                <h2 className="text-2xl font-bold text-gray-900">
+                    <TranslatableText text={section.name} />
+                </h2>
                 <Button variant="ghost" className="text-black hover:text-[#0ABED6] hover:underline " asChild>
                   <Link href={`/blog/category/${encodeURIComponent(section.name)}`}>
-                    See more blogs <ArrowRight className="ml-2 h-4 w-4" />
+                    <TranslatableText text="See more blogs" /> <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
                 </Button>
               </div>

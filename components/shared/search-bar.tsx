@@ -29,10 +29,14 @@ import {
 import { cn } from "@/lib/utils";
 import { identifySearchIntent } from "@/lib/search-action";
 import { useAutoLocation } from "@/lib/hooks/use-auto-location"; 
+// ✅ 1. Import Translation tools
+import { TranslatableText } from "@/components/shared/translatable-text";
+import { useTranslation } from "@/components/shared/translation-context";
+import { translateContent } from "@/lib/translation-action";
 
 interface SearchBarProps {
   className?: string;
-  locations: string[]; // Receives DB locations
+  locations: string[]; 
 }
 
 export function SearchBar({ className, locations }: SearchBarProps) {
@@ -44,21 +48,39 @@ export function SearchBar({ className, locations }: SearchBarProps) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = React.useTransition();
 
-  // ✅ 1. Flag to track if user manually touched the location
   const [hasInteracted, setHasInteracted] = useState(false);
-
-  // 2. Get User's Real City
   const detectedCity = useAutoLocation();
+
+  // ✅ Custom Hook to translate placeholders (since we can't put components in props)
+  const useTranslatedPlaceholder = (text: string) => {
+    const { targetLang } = useTranslation();
+    const [translated, setTranslated] = useState(text);
+
+    useEffect(() => {
+      if (targetLang === 'en') {
+        setTranslated(text);
+        return;
+      }
+      let isMounted = true;
+      translateContent(text, targetLang).then((res) => {
+        if (isMounted && res.translation) setTranslated(res.translation);
+      });
+      return () => { isMounted = false; };
+    }, [targetLang, text]);
+
+    return translated;
+  };
+
+  // ✅ Prepare Translated Placeholders
+  const queryPlaceholder = useTranslatedPlaceholder("Search for companies, categories...");
+  const locationSearchPlaceholder = useTranslatedPlaceholder("Search locations...");
 
   // 3. Auto-Select Logic
   useEffect(() => {
-    // ✅ Only auto-fill if user hasn't interacted yet
     if (detectedCity && !location && !hasInteracted) {
-      // Check if DB has a match
       const match = locations.find(dbLoc => 
         dbLoc.toLowerCase().includes(detectedCity.toLowerCase())
       );
-
       if (match) {
         setLocation(match);
       }
@@ -70,7 +92,6 @@ export function SearchBar({ className, locations }: SearchBarProps) {
     if (!query.trim() && !location.trim()) return;
 
     startTransition(async () => {
-      // Clean location string (remove state/country part if present)
       const cleanLocation = location.split(',')[0].trim();
 
       try {
@@ -90,7 +111,6 @@ export function SearchBar({ className, locations }: SearchBarProps) {
         }
       } catch (error) {
         console.error("Search failed", error);
-        // Fallback
         const params = new URLSearchParams();
         if (query) params.set("query", query);
         if (cleanLocation) params.set("loc", cleanLocation);
@@ -113,7 +133,7 @@ export function SearchBar({ className, locations }: SearchBarProps) {
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
         <Input 
           id="search-query"
-          placeholder="Search for companies, categories..." 
+          placeholder={queryPlaceholder} // ✅ Using Translated Placeholder
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className="border-0 shadow-none focus-visible:ring-0 pl-12 h-12 text-base bg-transparent rounded-full text-gray-900 placeholder:text-gray-500"
@@ -136,12 +156,14 @@ export function SearchBar({ className, locations }: SearchBarProps) {
               {location ? (
                 <div className="flex items-center gap-2 truncate">
                    <MapPin className="h-4 w-4 text-[#0ABED6] shrink-0" />
+                   {/* We don't translate the selected location value (e.g. "Delhi") as it's a proper noun/DB value */}
                    <span className="truncate">{location}</span>
                 </div>
               ) : (
                 <div className="flex items-center gap-2 text-gray-500 text-sm">
                    {!detectedCity ? <Navigation className="h-3 w-3 animate-pulse" /> : null}
-                   <span>Select City/State</span>
+                   {/* ✅ Translated Dropdown Label */}
+                   <span><TranslatableText text="Select City/State" /></span>
                 </div>
               )}
               
@@ -151,7 +173,7 @@ export function SearchBar({ className, locations }: SearchBarProps) {
                     onClick={(e) => {
                         e.stopPropagation();
                         setLocation("");
-                        setHasInteracted(true); // ✅ Mark as interacted
+                        setHasInteracted(true); 
                     }}
                     className="ml-2 hover:bg-gray-200 rounded-full p-1 cursor-pointer"
                  >
@@ -165,9 +187,13 @@ export function SearchBar({ className, locations }: SearchBarProps) {
           
           <PopoverContent className="w-[240px] p-0" align="start">
             <Command>
-              <CommandInput placeholder="Search locations..." />
+              {/* ✅ Translated Command Input Placeholder */}
+              <CommandInput placeholder={locationSearchPlaceholder} />
               <CommandList>
-                <CommandEmpty>No locations found.</CommandEmpty>
+                <CommandEmpty>
+                    {/* ✅ Translated Empty State */}
+                    <TranslatableText text="No locations found." />
+                </CommandEmpty>
                 <CommandGroup>
                   {locations.map((loc) => (
                     <CommandItem
@@ -175,7 +201,7 @@ export function SearchBar({ className, locations }: SearchBarProps) {
                       value={loc}
                       onSelect={() => {
                         setLocation(loc); 
-                        setHasInteracted(true); // ✅ Mark as interacted
+                        setHasInteracted(true); 
                         setOpen(false);
                       }}
                       className="cursor-pointer"
@@ -203,7 +229,12 @@ export function SearchBar({ className, locations }: SearchBarProps) {
         disabled={isPending}
         className="w-full md:w-auto rounded-xl md:rounded-full px-8 bg-[#0ABED6] hover:bg-[#09A8BD] text-white h-12 font-semibold shadow-sm"
       >
-        {isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : "Search"}
+        {isPending ? (
+            <Loader2 className="h-5 w-5 animate-spin" /> 
+        ) : (
+            // ✅ Translated Button Text
+            <TranslatableText text="Search" />
+        )}
       </Button>
 
     </form>

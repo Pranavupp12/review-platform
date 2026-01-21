@@ -4,6 +4,7 @@ import { Noto_Sans_JP } from 'next/font/google';
 import './globals.css';
 import { cn } from '@/lib/utils';
 import { Toaster } from "@/components/ui/sonner";
+import { TranslationProvider } from "@/components/shared/translation-context";
 
 const noto = Noto_Sans_JP({
   subsets: ['latin'],
@@ -33,8 +34,10 @@ export default function RootLayout({
           noto.variable
         )}
       >
+        <TranslationProvider>
         {children}
         <Toaster /> {/* Global Toaster for notifications */}
+        </TranslationProvider>
       </body>
     </html>
   );

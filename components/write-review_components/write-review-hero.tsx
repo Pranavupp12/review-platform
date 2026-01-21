@@ -1,9 +1,11 @@
 import { SearchBar } from '@/components/shared/search-bar'; 
 import { prisma } from "@/lib/prisma";
+// ✅ Import the Translator Component
+import { TranslatableText } from "@/components/shared/translatable-text";
 
 export async function WriteReviewHero() { 
   
-  // ✅ 3. FETCH LOCATIONS (Standard Logic)
+  // 3. FETCH LOCATIONS (Standard Logic)
   const locationsData = await prisma.company.findMany({
     select: { city: true, state: true },
     distinct: ['city', 'state'], 
@@ -37,15 +39,17 @@ export async function WriteReviewHero() {
       {/* Content Container */}
       <div className="relative z-10 container mx-auto max-w-4xl text-center">
         <h1 className="text-2xl md:text-4xl font-bold text-black mb-6 tracking-tight">
-          What do you want to review?
+          {/* ✅ Translatable Title */}
+          <TranslatableText text="What do you want to review?" />
         </h1>
         <p className="text-md md:text-lg text-muted-foreground mb-10 max-w-2xl mx-auto opacity-95 font-medium">
-          Find the company you want to review and share your experience. Your feedback helps others make better choices.
+          {/* ✅ Translatable Description */}
+          <TranslatableText text="Find the company you want to review and share your experience. Your feedback helps others make better choices." />
         </p>
 
         {/* Search Bar Container */}
         <div>
-           {/* ✅ 4. Pass locations prop */}
+           {/* 4. Pass locations prop */}
            <SearchBar 
               className='max-w-2xl lg:max-w-3xl' 
               locations={uniqueLocations} 

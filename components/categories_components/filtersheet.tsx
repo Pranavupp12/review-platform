@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -23,6 +22,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+// ✅ Import Translation Component
+import { TranslatableText } from "@/components/shared/translatable-text";
 
 const PRESET_CITIES = [
   "New York", "San Francisco", "Austin",
@@ -32,33 +33,27 @@ const PRESET_CITIES = [
 
 interface FilterSheetProps {
   relatedSubCategories: { id: string; name: string; slug: string }[];
-  currentCategoryId: string; // This is the Category Slug
+  currentCategoryId: string; 
 }
 
 export function FilterSheet({ relatedSubCategories, currentCategoryId }: FilterSheetProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const pathname = usePathname(); // To know if we are already on a subcategory page
+  const pathname = usePathname(); 
   const [open, setOpen] = React.useState(false);
   const [isLocating, setIsLocating] = React.useState(false);
 
-  // 1. State for Filters
   const [rating, setRating] = React.useState(searchParams.get("rating") || "all");
   const [claimed, setClaimed] = React.useState(searchParams.get("claimed") === "true");
   const [selectedCity, setSelectedCity] = React.useState(searchParams.get("loc") || "");
-  
-  // 2. NEW: State for Subcategory Selection
-  // We initialize it to null. If the user is already on a subcategory page, 
-  // we could technically pre-select it, but 'relatedSubCategories' usually excludes current.
   const [selectedSubSlug, setSelectedSubSlug] = React.useState<string | null>(null);
 
-  // Reset state when sheet opens to match URL (optional but good UX)
   React.useEffect(() => {
     if (open) {
       setRating(searchParams.get("rating") || "all");
       setClaimed(searchParams.get("claimed") === "true");
       setSelectedCity(searchParams.get("loc") || "");
-      setSelectedSubSlug(null); // Reset sub selection
+      setSelectedSubSlug(null); 
     }
   }, [open, searchParams]);
 
@@ -97,7 +92,6 @@ export function FilterSheet({ relatedSubCategories, currentCategoryId }: FilterS
   const handleApply = () => {
     const params = new URLSearchParams(searchParams.toString());
     
-    // A. Apply Query Params (Rating, City, Claimed)
     if (rating && rating !== "all") params.set("rating", rating);
     else params.delete("rating");
 
@@ -110,16 +104,12 @@ export function FilterSheet({ relatedSubCategories, currentCategoryId }: FilterS
     params.delete("zip");
     params.delete("country");
 
-    // B. Construct Base Path (Navigation Logic)
-    let basePath = pathname; // Default to staying on current page
+    let basePath = pathname; 
 
     if (selectedSubSlug) {
-       // If a subcategory is selected, navigate to that specific page
-       // URL: /categories/[categorySlug]/[subCategorySlug]
        basePath = `/categories/${currentCategoryId}/${selectedSubSlug}`;
     }
 
-    // C. Execute Navigation
     router.push(`${basePath}?${params.toString()}`);
     setOpen(false);
   };
@@ -135,20 +125,24 @@ export function FilterSheet({ relatedSubCategories, currentCategoryId }: FilterS
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
         <Button variant="outline" className="text-black bg-gray-50 border-black border hover:bg-gray-200">
-          <Filter className="h-4 w-4 mr-2" /> All filters
+          <Filter className="h-4 w-4 mr-2" /> <TranslatableText text="All filters" />
         </Button>
       </SheetTrigger>
       <SheetContent className="w-full sm:max-w-md flex flex-col h-full p-0" side="right">
         
         <SheetHeader className="p-6 border-b">
-          <SheetTitle className="text-2xl font-bold">All filters</SheetTitle>
+          <SheetTitle className="text-2xl font-bold">
+            <TranslatableText text="All filters" />
+          </SheetTitle>
         </SheetHeader>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-8">
           
           {/* Rating Filter */}
           <div className="space-y-4">
-            <h3 className="font-semibold text-sm text-gray-900">Rating</h3>
+            <h3 className="font-semibold text-sm text-gray-900">
+                <TranslatableText text="Rating" />
+            </h3>
             <div className="flex border rounded-md overflow-hidden divide-x">
               {["all", "3", "4", "4.5"].map((val) => (
                 <button
@@ -159,7 +153,7 @@ export function FilterSheet({ relatedSubCategories, currentCategoryId }: FilterS
                     rating === val ? "bg-[#0892A5]/10 text-[#0892A5]" : "hover:bg-gray-50 text-gray-700"
                   )}
                 >
-                   {val !== "all" && "★"} {val === "all" ? "All" : `${val}+`}
+                   {val !== "all" && "★"} {val === "all" ? <TranslatableText text="All" /> : `${val}+`}
                 </button>
               ))}
             </div>
@@ -167,10 +161,14 @@ export function FilterSheet({ relatedSubCategories, currentCategoryId }: FilterS
 
           {/* City Filter */}
           <div className="space-y-4">
-            <h3 className="font-semibold text-sm text-gray-900">City</h3>
+            <h3 className="font-semibold text-sm text-gray-900">
+                <TranslatableText text="City" />
+            </h3>
             <Select value={selectedCity} onValueChange={setSelectedCity}>
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select a city" />
+                {/* Note: SelectValue renders the selected value. 
+                    We wrap the placeholder but the selected city itself (e.g. "Delhi") isn't typically translated. */}
+                <SelectValue placeholder={<TranslatableText text="Select a city" />} />
               </SelectTrigger>
               <SelectContent>
                 <div 
@@ -185,11 +183,12 @@ export function FilterSheet({ relatedSubCategories, currentCategoryId }: FilterS
                     ) : (
                         <Navigation className="h-4 w-4" /> 
                     )}
-                    {isLocating ? "Locating..." : "Use current location"}
+                    {isLocating ? <TranslatableText text="Locating..." /> : <TranslatableText text="Use current location" />}
                 </div>
                 {PRESET_CITIES.map((city) => (
                   <SelectItem key={city} value={city}>
-                    {city}
+                    {/* Cities are proper nouns, but can be wrapped if desired */}
+                    <TranslatableText text={city} />
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -198,7 +197,9 @@ export function FilterSheet({ relatedSubCategories, currentCategoryId }: FilterS
 
           {/* Status Filter */}
           <div className="space-y-4">
-            <h3 className="font-semibold text-sm text-gray-900">Company status</h3>
+            <h3 className="font-semibold text-sm text-gray-900">
+                <TranslatableText text="Company status" />
+            </h3>
             <div className="flex items-start space-x-3">
               <Checkbox 
                 id="claimed" 
@@ -207,10 +208,10 @@ export function FilterSheet({ relatedSubCategories, currentCategoryId }: FilterS
               />
               <div className="grid gap-1.5 leading-none">
                 <Label htmlFor="claimed" className="text-sm font-medium leading-none">
-                  Claimed
+                  <TranslatableText text="Claimed" />
                 </Label>
                 <p className="text-sm text-muted-foreground">
-                  Show only verified companies.
+                  <TranslatableText text="Show only verified companies." />
                 </p>
               </div>
             </div>
@@ -219,10 +220,11 @@ export function FilterSheet({ relatedSubCategories, currentCategoryId }: FilterS
           {/* Subcategories Filter */}
           {relatedSubCategories.length > 0 && (
             <div className="space-y-4">
-              <h3 className="font-semibold text-sm text-gray-900">Subcategories</h3>
+              <h3 className="font-semibold text-sm text-gray-900">
+                <TranslatableText text="Subcategories" />
+              </h3>
               <div className="flex flex-wrap gap-2">
                 {relatedSubCategories.map((sub) => {
-                  // If the item is selected, it should look active
                   const isSelected = selectedSubSlug === (sub.slug || sub.name.toLowerCase().replace(/ /g, '-'));
                   
                   return (
@@ -235,14 +237,12 @@ export function FilterSheet({ relatedSubCategories, currentCategoryId }: FilterS
                            ? "bg-[#0892A5] text-white border-[#0892A5] hover:bg-[#0892A5]/90 hover:text-white"
                            : "hover:border-[#0892A5] hover:text-[#0892A5]"
                       )}
-                      // Toggle selection on click
                       onClick={() => {
                           const slug = sub.slug || sub.name.toLowerCase().replace(/ /g, '-');
-                          // If clicking the same one, deselect it. Otherwise select it.
                           setSelectedSubSlug(prev => prev === slug ? null : slug);
                       }}
                     >
-                      {sub.name}
+                      <TranslatableText text={sub.name} />
                       {isSelected && <X className="ml-1 h-3 w-3" />}
                     </Button>
                   );
@@ -255,10 +255,10 @@ export function FilterSheet({ relatedSubCategories, currentCategoryId }: FilterS
         {/* Footer */}
         <SheetFooter className="p-6 border-t bg-gray-50 flex-row gap-4 sm:justify-between items-center">
            <Button variant="ghost" onClick={handleReset} className="text-gray-500 hover:text-gray-900">
-             Reset
+             <TranslatableText text="Reset" />
            </Button>
            <Button onClick={handleApply} className="bg-[#000032] hover:bg-[#000032]/90 text-white px-8 rounded-full">
-             Show Results
+             <TranslatableText text="Show Results" />
            </Button>
         </SheetFooter>
 

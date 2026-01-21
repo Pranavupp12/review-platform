@@ -1,6 +1,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import {format} from 'date-fns'
+// ✅ Import Translator
+import { TranslatableText } from "@/components/shared/translatable-text";
 
 interface FeaturedBlogCardProps {
   blog: {
@@ -15,6 +17,9 @@ interface FeaturedBlogCardProps {
 }
 
 export function FeaturedBlogCard({ blog }: FeaturedBlogCardProps) {
+  // Format date first (as string) so we can pass it to translator if needed
+  const dateStr = format(new Date(blog.createdAt), "dd MMM, yyyy");
+
   return (
     <Link href={`/blog/${blog.blogUrl}`} className="group block">
       
@@ -32,31 +37,33 @@ export function FeaturedBlogCard({ blog }: FeaturedBlogCardProps) {
             />
           ) : (
             <div className="w-full h-full bg-neutral-100 flex items-center justify-center text-neutral-400">
-              No Image
+              <TranslatableText text="No Image" />
             </div>
           )}
         </div>
 
         {/* Text Side */}
-        {/* 👇 CHANGED: Removed lg:col-span-4. It now naturally takes the second half. */}
         <div className="flex flex-col justify-center space-y-4">
-          <span className="text-sm font-semibold text-[#0892A5] uppercase tracking-wider">
-            Featured • {blog.category}
+          <span className="text-sm font-semibold text-[#0892A5] uppercase tracking-wider flex items-center gap-1">
+            <TranslatableText text="Featured" /> • <TranslatableText text={blog.category} />
           </span>
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 leading-tight group-hover:text-[#0892A5] hover:underline transition-colors">
-            {blog.headline}
+            <TranslatableText text={blog.headline} />
           </h1>
-          <p className="text-gray-500 text-lg line-clamp-3 leading-relaxed">
-            {blog.metaDescription}
-          </p>
+          <div className="text-gray-500 text-lg line-clamp-3 leading-relaxed">
+            <TranslatableText text={blog.metaDescription} />
+          </div>
           <div className="flex items-center gap-3 pt-4">
             <div className="h-10 w-10 rounded-full bg-[#0ABED6]/30 flex items-center justify-center text-sm font-bold text-[#0892A5]">
               {blog.authorName.charAt(0)}
             </div>
             <div className="text-sm text-gray-600">
-              <span className="font-medium text-gray-900 block">{blog.authorName}</span>
+              <span className="font-medium text-gray-900 block">
+                 <TranslatableText text={blog.authorName} />
+              </span>
               <span className="text-gray-400">
-                 {format(new Date(blog.createdAt),"dd MMM,yyyy")}
+                 {/* Dates often don't need translation, but you can if you want locale formats */}
+                 <TranslatableText text={dateStr} />
               </span>
             </div>
           </div>

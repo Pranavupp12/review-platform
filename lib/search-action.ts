@@ -5,6 +5,43 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { prisma } from "@/lib/prisma";
 import Groq from "groq-sdk";
 
+function extractJsonArray(text: string): any[] {
+  try {
+    // 1. Try clean parse first
+    return JSON.parse(text);
+  } catch (e) {
+    // 2. If that fails, find the first '[' and the last ']'
+    // This ignores any "Note:" or markdown text before/after
+    const start = text.indexOf('[');
+    const end = text.lastIndexOf(']');
+    
+    if (start !== -1 && end !== -1) {
+      const jsonString = text.substring(start, end + 1);
+      try {
+        return JSON.parse(jsonString);
+      } catch (innerE) {
+        return [];
+      }
+    }
+    return [];
+  }
+}
+
+function getSynonymContext(): string {
+  const grouped: Record<string, string[]> = {};
+  
+  Object.entries(CATEGORY_SYNONYMS).forEach(([keyword, category]) => {
+    // Capitalize category for consistency
+    const catName = category.charAt(0).toUpperCase() + category.slice(1);
+    if (!grouped[catName]) grouped[catName] = [];
+    grouped[catName].push(keyword);
+  });
+
+  return Object.entries(grouped)
+    .map(([cat, keywords]) => `- ${cat}: matches terms like "${keywords.join(", ")}"`)
+    .join("\n");
+}
+
 // 1. Initialize Gemini
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 const model = genAI.getGenerativeModel({
@@ -129,9 +166,7 @@ async function getTaxonomyForAI() {
     console.error("Failed to fetch taxonomy:", error);
     // Fallback to basic lists if DB fails, to prevent crash
     return {
-      categoriesList:
-        "Software, Health, Retail, Finance, Automotive, Education, Travel",
-      subCategoriesList: "Web Dev, Dentists, Gyms, Restaurants",
+    CATEGORIES_LIST,SUBCATEGORIES_LIST
     };
   }
 }
@@ -413,23 +448,28 @@ export async function identifySearchIntent({
     // 2. HYBRID AI INTENT CHECK
     const { categoriesList, subCategoriesList } = await getTaxonomyForAI();
 
+    const synonymContext = getSynonymContext();
+
     // ✅ PROMPT UPDATE: Asked to extract location
     const prompt = `
       Analyze search query: "${query}".
       
       Tasks:
       1. Determine navigation intent (Category, SubCategory, or Company).
-      2. Extract Location if present in text (e.g. "in Delhi", "near Mumbai").
+      2. Extract Location if present.
       3. Determine sorting intent.
 
       Database Context:
       - Categories: ${categoriesList}
       - SubCategories: ${subCategoriesList}
       
+      Synonym Mapping Rules (Use this to map specific terms to Categories):
+      ${synonymContext}
+      
       Rules:
+      - If user queries a synonym (e.g. "Lawyer"), map it to the corresponding Category (e.g. "Legal").
       - If user implies quality ("best", "top"), set sortBy="rating_high".
       - If user implies recency ("new", "latest"), set sortBy="newest".
-      - Extract city/state names into 'extractedLocation'.
       
       Return Strict JSON:
       {
@@ -545,8 +585,7 @@ export async function generateReviewKeywords(
   // 1. Fail fast for short text
   if (!reviewText || reviewText.length < 10) return [];
 
-  try {
-    const prompt = `
+  const prompt = `
       Perform Aspect-Based Sentiment Analysis (ABSA) on this review.
       
       Review: "${reviewText}"
@@ -580,36 +619,58 @@ export async function generateReviewKeywords(
          - The snippet must be an exact substring from the review.
 
       4. **Output Format:** Return a JSON array of objects: [{"topic": "string", "sentiment": "string", "snippet": "string"}]
-    `;
+  `;
 
+  let rawData: any[] = [];
+
+  try {
+    // 👉 ATTEMPT 1: Primary Model (Gemini)
     const result = await model.generateContent(prompt);
     const text = result.response.text();
+    
+    rawData = extractJsonArray(text);
 
-    // Clean up json markdown
-    const jsonString = text.replace(/```json|```/g, "").trim();
-    const rawData = JSON.parse(jsonString);
+  } catch (primaryError) {
+    console.warn("⚠️ Keyword Extraction: Gemini failed, switching to Groq:", primaryError);
 
-    if (!Array.isArray(rawData)) return [];
-
-    // 5. Transform to "topic:sentiment:snippet" format for the DB
-    const formattedKeywords: string[] = rawData
-      .filter((item) => item.topic && item.sentiment && item.snippet)
-      .map((item) => {
-        // Clean snippet to ensure it matches specific highlighting rules if needed
-        const cleanSnippet = item.snippet.trim();
-        const cleanTopic = item.topic.toLowerCase();
-        const cleanSentiment = item.sentiment.toLowerCase();
-
-        // Return the format your UI expects: "topic:sentiment:snippet"
-        return `${cleanTopic}:${cleanSentiment}:${cleanSnippet}`;
+    try {
+      // 👉 ATTEMPT 2: Fallback Model (Groq)
+      const completion = await groq.chat.completions.create({
+        messages: [
+          { role: "system", content: "You are a JSON-only API. Output a strict JSON array." },
+          { role: "user", content: prompt },
+        ],
+        model: "llama-3.1-8b-instant",
+        temperature: 0,
+        // Llama usually handles arrays fine, but we ensure parsing below
       });
 
-    // Deduplicate strings
-    return Array.from(new Set(formattedKeywords));
-  } catch (error) {
-    console.error("AI Keyword Extraction Failed:", error);
-    return [];
+      const text = completion.choices[0]?.message?.content || "[]";
+      // Clean potential markdown from Llama output as well
+     
+      rawData = extractJsonArray(text);
+
+    } catch (fallbackError) {
+      console.error("❌ Keyword Extraction: Both models failed.", fallbackError);
+      return [];
+    }
   }
+
+  // 3. Validation
+  if (!Array.isArray(rawData)) return [];
+
+  // 4. Transform to "topic:sentiment:snippet" format for the DB
+  const formattedKeywords: string[] = rawData
+    .filter((item) => item.topic && item.sentiment && item.snippet)
+    .map((item) => {
+      const cleanSnippet = item.snippet.trim();
+      const cleanTopic = item.topic.toLowerCase();
+      const cleanSentiment = item.sentiment.toLowerCase();
+      return `${cleanTopic}:${cleanSentiment}:${cleanSnippet}`;
+    });
+
+  // Deduplicate strings
+  return Array.from(new Set(formattedKeywords));
 }
 
 //Generate Dashboard Insights ---

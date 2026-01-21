@@ -487,3 +487,13 @@ model Lead {
 
   @@index([companyId])
 }
+
+model TranslationCache {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  originalText   String   
+  targetLang     String   
+  translatedText String
+  createdAt      DateTime @default(now())
+
+  @@index([originalText, targetLang])
+}

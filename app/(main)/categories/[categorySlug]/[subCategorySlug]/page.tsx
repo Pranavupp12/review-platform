@@ -15,6 +15,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"; 
 import PageImpressionTracker from '@/components/categories_components/page-impression-tracker';
+// ✅ Import Translation Component
+import { TranslatableText } from "@/components/shared/translatable-text";
 
 export const dynamic = 'force-dynamic';
 
@@ -62,7 +64,7 @@ export default async function SubCategoryCompaniesPage({ params, searchParams }:
     notFound();
   }
 
-  // ✅ Destructure featuredCompanies
+  // Destructure featuredCompanies
   const { category, name: subCategoryName, companies, featuredCompanies, pagination } = data;
   const { name: categoryName, subCategories: siblingSubCategories } = category;
 
@@ -75,6 +77,8 @@ export default async function SubCategoryCompaniesPage({ params, searchParams }:
     ...(companies || []).map(c => c.id)
   ];
 
+  // Note: Breadcrumb hrefs need to be raw strings, but we can translate labels if we custom render them.
+  // Assuming the Breadcrumb component takes raw objects. We keep them as is.
   const breadcrumbItems = [
     { label: "Categories", href: "/categories" },
     { label: categoryName, href: `/categories/${categorySlug}` },
@@ -86,7 +90,7 @@ export default async function SubCategoryCompaniesPage({ params, searchParams }:
 
       <PageImpressionTracker 
         companyIds={allCompanyIds}
-        query={userQuery || subCategoryName} // Track using search query OR subcategory name
+        query={userQuery || subCategoryName} 
         location={locationFilter}
         userRegion={region}
       />
@@ -101,10 +105,10 @@ export default async function SubCategoryCompaniesPage({ params, searchParams }:
           <div className="flex items-center gap-4 mb-8">
             <div>
               <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-gray-900 mb-2">
-                Best in <span className="text-[#0892A5]">{subCategoryName}</span>
+                <TranslatableText text="Best in" /> <span className="text-[#0892A5]"><TranslatableText text={subCategoryName} /></span>
               </h1>
               <p className="text-gray-600 text-lg">
-                Compare the top rated companies in {subCategoryName}
+                <TranslatableText text="Compare the top rated companies in" /> <TranslatableText text={subCategoryName} />
               </p>
             </div>
           </div>
@@ -127,12 +131,12 @@ export default async function SubCategoryCompaniesPage({ params, searchParams }:
         {/* Left Column: Company List */}
         <div className="lg:col-span-3 order-2 lg:order-1">
           
-          {/* ✅ FEATURED SECTION (Conditionally Rendered) */}
+          {/* FEATURED SECTION (Conditionally Rendered) */}
           {featuredCompanies && featuredCompanies.length > 0 && (
             <div className="mb-8 border border-gray-200 bg-white rounded-xl p-4 sm:p-6">
                <div className="flex items-center gap-2 mb-4">
                   <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide">
-                    Featured Companies
+                    <TranslatableText text="Featured Companies" />
                   </h3>
                   <TooltipProvider delayDuration={0}>
                     <Tooltip>
@@ -140,7 +144,10 @@ export default async function SubCategoryCompaniesPage({ params, searchParams }:
                         <Info className="h-4 w-4 text-gray-400 hover:text-gray-600 cursor-pointer transition-colors" />
                       </TooltipTrigger>
                       <TooltipContent className="bg-[#000032] text-white border shadow-md text-xs max-w-xs">
-                        <p>These companies are sponsored placements. <br/>Results are relevant to your search category.</p>
+                        <p>
+                            <TranslatableText text="These companies are sponsored placements." /> <br/>
+                            <TranslatableText text="Results are relevant to your search category." />
+                        </p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -167,7 +174,7 @@ export default async function SubCategoryCompaniesPage({ params, searchParams }:
           {/* Organic Section */}
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-bold text-gray-900">
-              Companies ({companies.length})
+              <TranslatableText text="Companies" /> ({companies.length})
             </h2>
             <CategorySort />
           </div>
@@ -198,8 +205,12 @@ export default async function SubCategoryCompaniesPage({ params, searchParams }:
             ) : (
               <div className="text-center py-16 bg-white border-none">
                 <LayoutGrid className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                <p className="text-lg font-medium text-gray-700">No companies found in this subcategory.</p>
-                <p className="text-sm text-gray-500 mt-2">Try adjusting your filters or checking other categories.</p>
+                <p className="text-lg font-medium text-gray-700">
+                    <TranslatableText text="No companies found in this subcategory." />
+                </p>
+                <p className="text-sm text-gray-500 mt-2">
+                    <TranslatableText text="Try adjusting your filters or checking other categories." />
+                </p>
               </div>
             )}
           </div>

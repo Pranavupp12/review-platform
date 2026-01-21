@@ -1,6 +1,6 @@
-// components/write-review/trust-bento-grid.tsx
-
 import { ShieldCheck, ScanFace, Scale, Users } from 'lucide-react';
+// ✅ Import the Translator Component
+import { TranslatableText } from "@/components/shared/translatable-text";
 
 export function TrustBentoGrid() {
   return (
@@ -10,7 +10,7 @@ export function TrustBentoGrid() {
         {/* Header */}
         <div className="mb-12 max-w-2xl ">
           <h2 className="text-3xl font-bold text-black ">
-            Why you can trust us
+            <TranslatableText text="Why you can trust us" />
           </h2>
         </div>
 
@@ -29,11 +29,12 @@ export function TrustBentoGrid() {
                 <ShieldCheck className="w-7 h-7 text-white" />
               </div>
               <div>
-                <h3 className="text-2xl font-bold text-white mb-3">Verified Experiences</h3>
-                <p className="text-white/90 text-lg leading-relaxed max-w-md font-medium">
-                  We ensure reviews are written by real people about real experiences. 
-                  Our advanced verification systems check for authenticity before a review goes live.
-                </p>
+                <h3 className="text-2xl font-bold text-white mb-3">
+                  <TranslatableText text="Verified Experiences" />
+                </h3>
+                <div className="text-white/90 text-lg leading-relaxed max-w-md font-medium">
+                  <TranslatableText text="We ensure reviews are written by real people about real experiences. Our advanced verification systems check for authenticity before a review goes live." />
+                </div>
               </div>
             </div>
           </div>
@@ -46,10 +47,12 @@ export function TrustBentoGrid() {
               <ScanFace className="w-7 h-7 text-white" />
             </div>
             <div>
-              <h3 className="text-xl font-bold text-white mb-2">24/7 Fraud Sweep</h3>
-              <p className="text-white/90 text-sm font-medium leading-relaxed">
-                Our custom algorithms scan the platform around the clock to detect and remove fake reviews.
-              </p>
+              <h3 className="text-xl font-bold text-white mb-2">
+                <TranslatableText text="24/7 Fraud Sweep" />
+              </h3>
+              <div className="text-white/90 text-sm font-medium leading-relaxed">
+                <TranslatableText text="Our custom algorithms scan the platform around the clock to detect and remove fake reviews." />
+              </div>
             </div>
           </div>
 
@@ -61,10 +64,12 @@ export function TrustBentoGrid() {
               <Scale className="w-7 h-7 text-white" />
             </div>
             <div>
-              <h3 className="text-xl font-bold text-white mb-2">Zero Bias</h3>
-              <p className="text-white/90 text-sm font-medium leading-relaxed">
-                Companies cannot delete negative reviews. We treat all feedback equally to maintain integrity.
-              </p>
+              <h3 className="text-xl font-bold text-white mb-2">
+                <TranslatableText text="Zero Bias" />
+              </h3>
+              <div className="text-white/90 text-sm font-medium leading-relaxed">
+                <TranslatableText text="Companies cannot delete negative reviews. We treat all feedback equally to maintain integrity." />
+              </div>
             </div>
           </div>
 
@@ -80,11 +85,12 @@ export function TrustBentoGrid() {
                 <Users className="w-7 h-7 text-white" />
               </div>
               <div>
-                <h3 className="text-2xl font-bold text-white mb-3">Community Driven</h3>
-                <p className="text-white/90 text-lg leading-relaxed font-medium max-w-xl">
-                  Our community of millions of reviewers helps us spot suspicious activity. 
-                  Every review has a "Report" flag, allowing us to investigate concerns immediately.
-                </p>
+                <h3 className="text-2xl font-bold text-white mb-3">
+                  <TranslatableText text="Community Driven" />
+                </h3>
+                <div className="text-white/90 text-lg leading-relaxed font-medium max-w-xl">
+                  <TranslatableText text='Our community of millions of reviewers helps us spot suspicious activity. Every review has a "Report" flag, allowing us to investigate concerns immediately.' />
+                </div>
               </div>
             </div>
           </div>

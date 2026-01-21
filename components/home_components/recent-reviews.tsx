@@ -1,7 +1,5 @@
-// components/home_components/recent-reviews.tsx
 'use client';
 
-import * as React from 'react';
 import {
   Carousel,
   CarouselContent,
@@ -10,6 +8,8 @@ import {
   CarouselPrevious,
 } from '@/components/ui/carousel';
 import { ReviewCard } from '@/components/shared/review-card';
+// ✅ Import the Translator Component
+import { TranslatableText } from "@/components/shared/translatable-text";
 
 interface RecentReviewsProps {
   reviews: any[];
@@ -27,7 +27,10 @@ export function RecentReviews({ reviews }: RecentReviewsProps) {
         <Carousel opts={{ align: 'start', loop: false }} className="w-full">
           
           <div className="flex justify-between items-center mb-10">
-            <h2 className="text-2xl font-bold text-foreground tracking-tight">Recent reviews</h2>
+            <h2 className="text-2xl font-bold text-foreground tracking-tight">
+               {/* ✅ Translatable Section Title */}
+               <TranslatableText text="Recent reviews" />
+            </h2>
             <div className="block lg:hidden flex items-center gap-2">
               <CarouselPrevious className="static translate-y-0 h-10 w-10 border-border hover:bg-[#0ABED6] hover:text-accent-foreground" />
               <CarouselNext className="static translate-y-0 h-10 w-10 border-border hover:bg-[#0ABED6] hover:text-accent-foreground" />

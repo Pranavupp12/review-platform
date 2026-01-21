@@ -1,6 +1,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import {format} from 'date-fns'
+// ✅ Import Translator
+import { TranslatableText } from "@/components/shared/translatable-text";
 
 interface BlogCardProps {
   blog: {
@@ -14,6 +16,8 @@ interface BlogCardProps {
 }
 
 export function BlogCard({ blog }: BlogCardProps) {
+  const dateStr = format(new Date(blog.createdAt), "dd MMM, yyyy");
+
   return (
     <Link href={`/blog/${blog.blogUrl}`} className="group h-full flex flex-col">
       {/* Image Container */}
@@ -27,7 +31,7 @@ export function BlogCard({ blog }: BlogCardProps) {
           />
         ) : (
           <div className="w-full h-full bg-neutral-100 flex items-center justify-center text-gray-300 text-sm">
-            No Image
+            <TranslatableText text="No Image" />
           </div>
         )}
       </div>
@@ -35,17 +39,17 @@ export function BlogCard({ blog }: BlogCardProps) {
       {/* Content */}
       <div className="flex-1 flex flex-col">
         <span className="text-xs font-semibold text-[#0892A5] mb-2 uppercase tracking-wide">
-          {blog.category}
+          <TranslatableText text={blog.category} />
         </span>
         <h3 className="text-lg font-bold text-gray-900 leading-snug mb-2 group-hover:text-[#0892A5] hover:underline transition-colors line-clamp-2">
-          {blog.headline}
+           <TranslatableText text={blog.headline} />
         </h3>
-        <p className="text-sm text-gray-500 line-clamp-2 mb-4 flex-1 leading-relaxed">
-          {blog.metaDescription}
-        </p>
+        <div className="text-sm text-gray-500 line-clamp-2 mb-4 flex-1 leading-relaxed">
+           <TranslatableText text={blog.metaDescription} />
+        </div>
         <div className="mt-auto pt-4 border-t border-gray-100">
           <span className="text-xs text-gray-400 font-medium">
-            {format(new Date(blog.createdAt),"dd MMM,yyyy")}
+            <TranslatableText text={dateStr} />
           </span>
         </div>
       </div>

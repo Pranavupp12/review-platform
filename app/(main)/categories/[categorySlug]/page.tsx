@@ -15,6 +15,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"; 
 import PageImpressionTracker from '@/components/categories_components/page-impression-tracker';
+// ✅ Import Translation Component
+import { TranslatableText } from "@/components/shared/translatable-text";
 
 export const dynamic = 'force-dynamic';
 
@@ -67,6 +69,9 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
     ...(companies || []).map(c => c.id)
   ];
 
+  // Note: Breadcrumbs usually need raw strings for hrefs, but labels can be translated.
+  // Since Breadcrumb component might expect strings, we'll keep them as is or update the component.
+  // Assuming standard usage, we leave them raw or specific translation logic is handled inside Breadcrumb.
   const breadcrumbItems = [
     { label: "Categories", href: "/categories" },
     { label: categoryName, href: `/categories/${data.slug}`, current: true },
@@ -77,7 +82,7 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
 
       <PageImpressionTracker 
         companyIds={allCompanyIds}
-        query={userQuery || categoryName} // Track using search query OR category name
+        query={userQuery || categoryName} 
         location={locationFilter}
         userRegion={region}
       />
@@ -91,10 +96,10 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
           <div className="flex items-center gap-4 mb-8">
             <div>
               <h1 className="text-3xl md:text-4xl text-black font-bold tracking-tight mb-2">
-                Best in <span className='text-[#0892A5]'>{categoryName}</span>
+                <TranslatableText text="Best in" /> <span className='text-[#0892A5]'><TranslatableText text={categoryName} /></span>
               </h1>
               <p className="text-gray-600 text-lg">
-                Compare the top rated companies in {categoryName}
+                <TranslatableText text="Compare the top rated companies in" /> <TranslatableText text={categoryName} />
               </p>
             </div>
           </div>
@@ -117,13 +122,13 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
         {/* Left Column: Company List */}
         <div className="lg:col-span-3 order-2 lg:order-1">
           
-          {/* ✅ FEATURED SECTION (Conditionally Rendered) */}
+          {/* FEATURED SECTION */}
           {featuredCompanies && featuredCompanies.length > 0 && (
             <div className="mb-8 border border-gray-200 bg-white rounded-xl p-4 sm:p-6">
                {/* Heading with Tooltip */}
                <div className="flex items-center gap-2 mb-4">
                   <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide">
-                    Featured Companies
+                    <TranslatableText text="Featured Companies" />
                   </h3>
                   <TooltipProvider delayDuration={0}>
                     <Tooltip>
@@ -131,13 +136,15 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
                         <Info className="h-4 w-4 text-gray-400 hover:text-gray-600 cursor-pointer transition-colors" />
                       </TooltipTrigger>
                       <TooltipContent className="bg-[#000032] text-white border shadow-md text-xs max-w-xs">
-                        <p>These companies are sponsored placements. <br/>Results are relevant to your search category.</p>
+                        <p>
+                            <TranslatableText text="These companies are sponsored placements." /> <br/>
+                            <TranslatableText text="Results are relevant to your search category." />
+                        </p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
                </div>
                
-               {/* List of Featured Cards (Same Layout as Organic) */}
                <div className="space-y-4">
                  {featuredCompanies.map((company) => (
                    <CompanyListCard
@@ -145,7 +152,6 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
                       {...company}
                       badges={company.badges}
                       isFeatured={true}
-                      // Pass context so analytics know this was a sponsored click
                       trackingContext={{
                         query: userQuery || `Category: ${categoryName}`,
                         location: locationFilter || "Global",
@@ -160,7 +166,7 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
           {/* Organic Section */}
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-bold text-gray-900">
-              All Companies ({companies.length})
+              <TranslatableText text="All Companies" /> ({companies.length})
             </h2>
             <CategorySort />
           </div>
@@ -193,8 +199,12 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
                 <div className="bg-gray-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                   <LayoutGrid className="h-8 w-8 text-gray-400" />
                 </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-1">No results found</h3>
-                <p className="text-gray-500">Try adjusting your filters or search for a different category.</p>
+                <h3 className="text-lg font-bold text-gray-900 mb-1">
+                    <TranslatableText text="No results found" />
+                </h3>
+                <p className="text-gray-500">
+                    <TranslatableText text="Try adjusting your filters or search for a different category." />
+                </p>
               </div>
             )}
           </div>

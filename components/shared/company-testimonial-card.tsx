@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Star, ChevronLeft, ChevronRight, ShieldCheck } from "lucide-react";
+import { ChevronLeft, ChevronRight, ShieldCheck } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { BlockRating } from "./block-rating";
+// ✅ Import the Translator Component
+import { TranslatableText } from "@/components/shared/translatable-text";
 
 interface Testimonial {
   name: string;
@@ -33,7 +35,7 @@ interface CompanyTestimonialCardProps {
   websiteUrl?: string | null;
   rating: number;
   reviewCount: number;
-  claimed: boolean; // <--- RESTORED PROP
+  claimed: boolean; 
   badges: string[]; 
   testimonials: Testimonial[];
   className?: string;
@@ -46,14 +48,13 @@ export function CompanyTestimonialCard({
   logoImage,
   rating,
   reviewCount,
-  claimed, // <--- Destructured here
+  claimed, 
   badges,
   testimonials,
   className,
 }: CompanyTestimonialCardProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   
-  // Hydration fix: ensures we match server/client rendering
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => { setIsMounted(true); }, []);
 
@@ -70,13 +71,12 @@ export function CompanyTestimonialCard({
     if(hasTestimonials) setCurrentIndex((prevIndex) => (prevIndex - 1 + testimonials.length) % testimonials.length);
   };
 
-  // Safe date formatting
+  // Safe date formatting helper
   const formatDate = (date: Date) => {
-    if (!isMounted) return ""; // Avoid hydration mismatch
+    if (!isMounted) return ""; 
     return new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
-  // Badge Logic: If claimed, show Verified + 2 others. Else show 3 others.
   const displayLimit = claimed ? 2 : 3;
   const remainingCount = Math.max(0, (badges?.length || 0) - displayLimit);
 
@@ -98,7 +98,7 @@ export function CompanyTestimonialCard({
             </Avatar>
             <div>
               <Link href={`/company/${slug}`} className="text-lg font-bold text-gray-900 hover:text-[#0ABED6] transition-colors">
-                {name}
+                <TranslatableText text={name} />
               </Link>
               
               <div className="flex items-center gap-2 mt-1">
@@ -106,13 +106,15 @@ export function CompanyTestimonialCard({
                     <BlockRating value={rating} size="sm" />
                 </div>
                 <span className="font-bold text-gray-900">{rating.toFixed(1)}</span>
-                <span className="text-xs text-gray-500">({reviewCount.toLocaleString()} Reviews)</span>
+                <span className="text-xs text-gray-500">
+                  ({reviewCount.toLocaleString()} <TranslatableText text="Reviews" />)
+                </span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* 2. Badges Section (RESTORED) */}
+        {/* 2. Badges Section */}
         <div className="min-h-[60px]">
           <div className="flex flex-wrap gap-2">
               
@@ -123,11 +125,11 @@ export function CompanyTestimonialCard({
                     <TooltipTrigger asChild>
                       <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border cursor-help select-none bg-emerald-50 text-emerald-600 border-emerald-200">
                         <ShieldCheck className="h-3 w-3" />
-                        Verified
+                        <TranslatableText text="Verified" />
                       </div>
                     </TooltipTrigger>
                     <TooltipContent className="max-w-[200px] bg-gray-900 text-white border-gray-800 text-xs text-center">
-                      <p>This company has verified their ownership.</p>
+                      <p><TranslatableText text="This company has verified their ownership." /></p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -154,11 +156,11 @@ export function CompanyTestimonialCard({
                               )}
                             >
                               <Icon className="h-3 w-3" />
-                              {config.label}
+                              <TranslatableText text={config.label} />
                             </div>
                           </TooltipTrigger>
                           <TooltipContent className="max-w-[200px] bg-gray-900 text-white border-gray-800 text-xs text-center">
-                            <p>{config.description}</p>
+                            <p><TranslatableText text={config.description} /></p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
@@ -167,20 +169,22 @@ export function CompanyTestimonialCard({
                   
                   {/* More Count */}
                   {remainingCount > 0 && (
-                    <span className="text-xs text-gray-400 self-center">+{remainingCount} more</span>
+                    <span className="text-xs text-gray-400 self-center">
+                        +{remainingCount} <TranslatableText text="more" />
+                    </span>
                   )}
                 </>
               ) : (
                 !claimed && (
                     <div className="flex items-center gap-2 text-sm text-gray-400 italic">
-                    No badges awarded yet.
+                        <TranslatableText text="No badges awarded yet." />
                     </div>
                 )
               )}
           </div>
         </div>
 
-        {/* 3. Testimonial Slider (UPDATED LAYOUT) */}
+        {/* 3. Testimonial Slider */}
         {hasTestimonials ? (
           <div className="mt-auto rounded-lg bg-gray-50 p-4 relative min-h-[160px] flex flex-col justify-between border border-gray-100">
              <AnimatePresence mode="wait">
@@ -194,9 +198,13 @@ export function CompanyTestimonialCard({
                >
                  {/* Header: Name + Date */}
                  <div className="flex justify-between items-start">
-                    <p className="font-semibold text-sm text-gray-900 line-clamp-1">{currentTestimonial?.name}</p>
+                    <p className="font-semibold text-sm text-gray-900 line-clamp-1">
+                      <TranslatableText text={currentTestimonial?.name}/>
+                    </p>
                     <span className="text-[10px] text-gray-400 shrink-0">
-                        {currentTestimonial?.createdAt ? formatDate(currentTestimonial.createdAt) : ''}
+                        {currentTestimonial?.createdAt ? (
+                            <TranslatableText text={formatDate(currentTestimonial.createdAt)} />
+                        ) : ''}
                     </span>
                  </div>
                  
@@ -205,17 +213,17 @@ export function CompanyTestimonialCard({
                  <BlockRating value={rating} size="sm" />
                  </div>
 
-                 {/* Quote */}
+                 {/* Quote - Wrapper keeps line-clamp working */}
                  <blockquote className="text-xs text-gray-600 italic leading-relaxed line-clamp-3 mb-2">
-                     "{currentTestimonial?.quote}"
+                     "<TranslatableText text={currentTestimonial?.quote} />"
                  </blockquote>
                </motion.div>
              </AnimatePresence>
 
              {/* Footer: Exp Date + Nav Buttons */}
              <div className="flex justify-between items-end mt-2 pt-2 border-t border-gray-100/50">
-               <div className="inline-flex items-center px-2 py-0.5 rounded-xl text-[10px] font-medium bg-white text-gray-500 border border-gray-200">
-                  Date of Experience: {currentTestimonial?.dateOfExperience ? formatDate(currentTestimonial.dateOfExperience) : 'N/A'}
+               <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-xl text-[10px] font-medium bg-white text-gray-500 border border-gray-200">
+                  <TranslatableText text="Date of Experience" />: <TranslatableText text={currentTestimonial?.dateOfExperience ? formatDate(currentTestimonial.dateOfExperience) : 'N/A'} />
                </div>
                
                {testimonials.length > 1 && (
@@ -232,7 +240,9 @@ export function CompanyTestimonialCard({
           </div>
         ) : (
           <div className="mt-auto rounded-lg bg-gray-50 p-4 min-h-[140px] flex items-center justify-center border border-dashed border-gray-200">
-             <p className="text-xs text-gray-400">No reviews highlighted yet.</p>
+             <p className="text-xs text-gray-400">
+                <TranslatableText text="No reviews highlighted yet." />
+             </p>
           </div>
         )}
 
