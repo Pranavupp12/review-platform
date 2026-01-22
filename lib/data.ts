@@ -359,7 +359,6 @@ export async function getSubCategoryCompanies(
 }
 
 // 7. Fetch Category Companies
-// --- GET CATEGORY COMPANIES ---
 export async function getCategoryCompanies(
   categorySlug: string,
   filters?: FilterOptions, 
@@ -368,7 +367,6 @@ export async function getCategoryCompanies(
   if (!categorySlug) return null;
   const PAGE_SIZE = 10;
   
-  // ✅ FIX: Default to empty object to prevent "possibly undefined" errors
   const safeFilters = filters || {}; 
 
   try {
@@ -385,7 +383,7 @@ export async function getCategoryCompanies(
     if (safeFilters.country && safeFilters.country !== "all")
       companyWhereClause.country = safeFilters.country;
 
-    // Apply City Filter
+    // Apply City Filter (Fetch matching cities OR any active sponsors)
     if (targetCity) {
       companyWhereClause.OR = [
         { city: { contains: targetCity, mode: "insensitive" } },
@@ -414,7 +412,7 @@ export async function getCategoryCompanies(
             claimed: true,
             createdAt: true,
             isSponsored: true,
-            sponsoredScope: true,
+            sponsoredScope: true, // ✅ Required for logic
           },
         },
       },
@@ -433,29 +431,41 @@ export async function getCategoryCompanies(
       ),
     }));
 
+    // --- ✅ NEW SPONSORSHIP LOGIC ---
     const sponsored = [];
     let organic = []; 
     const searchCity = targetCity?.toLowerCase() || "";
 
     for (const company of allCompanies) {
+      // Check if this company matches the city filter (if one exists)
+      const companyCity = company.city?.toLowerCase() || "";
+      const matchesCity = !searchCity || companyCity.includes(searchCity);
+
       if (company.isSponsored) {
         if (company.sponsoredScope === "GLOBAL") {
+          // Case 1: GLOBAL Sponsor -> Always Featured (ignores city filter)
           sponsored.push(company);
-        } else if (company.sponsoredScope === "LOCAL") {
-          const companyCity = company.city?.toLowerCase() || "";
-          if (searchCity && companyCity.includes(searchCity)) {
+        } 
+        else if (company.sponsoredScope === "LOCAL") {
+          // Case 2: LOCAL Sponsor
+          if (searchCity && matchesCity) {
+            // User searching specific city & company matches -> Featured
             sponsored.push(company);
-          } else {
+          } else if (matchesCity) {
+            // User browsing "All" (no searchCity) -> Show as Organic
             organic.push(company);
           }
-        } else {
-          organic.push(company);
+          // If searching different city -> Hide completely (don't push to either)
+        } 
+        else {
+          // Case 3: Legacy/Null Scope -> Treat as organic if matches
+          if (matchesCity) organic.push(company);
         }
       } else {
-        if (searchCity && !company.city?.toLowerCase().includes(searchCity)) {
-          continue;
+        // Case 4: Not Sponsored -> Organic if matches
+        if (matchesCity) {
+          organic.push(company);
         }
-        organic.push(company);
       }
     }
 
@@ -464,7 +474,7 @@ export async function getCategoryCompanies(
     // @ts-ignore
     organic = sortCompanies(organic, safeFilters.sort || "relevant");
 
-    // Award Badges
+    // Award Badges (Only to top 5 organic results)
     const isDefaultSort = !safeFilters.sort || safeFilters.sort === "relevant";
     if (isDefaultSort) {
       for (let i = 0; i < organic.length; i++) {

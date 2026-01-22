@@ -16,6 +16,8 @@ import {
   Box, 
   Triangle 
 } from "lucide-react";
+// ✅ Import Translation Component
+import { TranslatableText } from "@/components/shared/translatable-text";
 
 const companies = [
   { id: "1", name: "Acme Corp", icon: Box },
@@ -33,7 +35,7 @@ export function ClientLogosCarousel() {
     <section className="py-10 bg-[#0892A5] ">
       <div className="container mx-auto px-4 mb-8 text-center">
         <p className="text-sm font-semibold text-white uppercase tracking-widest">
-          Trusted by 100+ businesses worldwide
+          <TranslatableText text="Trusted by 100+ businesses worldwide" />
         </p>
       </div>
       
@@ -47,7 +49,7 @@ export function ClientLogosCarousel() {
           plugins={[
             AutoScroll({
               playOnInit: true,
-              speed: 1, // Adjust speed (lower is slower)
+              speed: 1, 
               stopOnInteraction: false,
               stopOnMouseEnter: true,
             }),
@@ -62,7 +64,10 @@ export function ClientLogosCarousel() {
               >
                 <div className="flex items-center gap-2 text-white transition-colors duration-300 cursor-pointer group">
                   <company.icon className="h-8 w-8" strokeWidth={1.5} />
-                  <span className="text-xl font-bold tracking-tight">{company.name}</span>
+                  <span className="text-xl font-bold tracking-tight">
+                    {/* Company names are usually kept as-is, but you can wrap if needed */}
+                    <TranslatableText text={company.name}/>
+                  </span>
                 </div>
               </CarouselItem>
             ))}

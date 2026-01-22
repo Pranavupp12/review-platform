@@ -15,13 +15,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+// ✅ Import Translation Component
+import { TranslatableText } from "@/components/shared/translatable-text";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
     <Button type="submit" className="bg-[#0ABED6] hover:bg-[#09A8BD] text-white w-full md:w-auto" disabled={pending}>
       {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-      Save Changes
+      <TranslatableText text="Save Changes" />
     </Button>
   );
 }
@@ -55,8 +57,12 @@ export function SettingsForm({ user }: { user: any }) {
         </Avatar>
         
         <div className="space-y-2 text-center sm:text-left">
-            <h3 className="font-medium text-gray-900">Profile Picture</h3>
-            <p className="text-xs text-gray-500">Supports JPG, PNG or GIF. Max size 5MB.</p>
+            <h3 className="font-medium text-gray-900">
+                <TranslatableText text="Profile Picture" />
+            </h3>
+            <p className="text-xs text-gray-500">
+                <TranslatableText text="Supports JPG, PNG or GIF. Max size 5MB." />
+            </p>
             
             <div className="flex gap-2 justify-center sm:justify-start">
                 <Button 
@@ -65,7 +71,7 @@ export function SettingsForm({ user }: { user: any }) {
                   size="sm"
                   onClick={() => fileInputRef.current?.click()}
                 >
-                    <Upload className="h-4 w-4 mr-2" /> Upload New
+                    <Upload className="h-4 w-4 mr-2" /> <TranslatableText text="Upload New" />
                 </Button>
                 <Input 
                   ref={fileInputRef}
@@ -82,58 +88,68 @@ export function SettingsForm({ user }: { user: any }) {
       <div className="grid gap-6 md:grid-cols-2">
           {/* Name Input */}
           <div className="grid gap-2 md:col-span-2">
-            <Label htmlFor="name">Display Name</Label>
+            <Label htmlFor="name">
+                <TranslatableText text="Display Name" />
+            </Label>
             <Input id="name" name="name" defaultValue={user.name || ''} required />
           </div>
 
           {/* Country Select */}
           <div className="grid gap-2">
-            <Label htmlFor="country">Country</Label>
+            <Label htmlFor="country">
+                <TranslatableText text="Country" />
+            </Label>
             <Select name="country" defaultValue={user.country || undefined}>
               <SelectTrigger>
-                <SelectValue placeholder="Select country" />
+                <SelectValue placeholder={<TranslatableText text="Select country" />} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="US">United States</SelectItem>
-                <SelectItem value="UK">United Kingdom</SelectItem>
-                <SelectItem value="IN">India</SelectItem>
-                <SelectItem value="CA">Canada</SelectItem>
-                <SelectItem value="AU">Australia</SelectItem>
+                <SelectItem value="US"><TranslatableText text="United States" /></SelectItem>
+                <SelectItem value="UK"><TranslatableText text="United Kingdom" /></SelectItem>
+                <SelectItem value="IN"><TranslatableText text="India" /></SelectItem>
+                <SelectItem value="CA"><TranslatableText text="Canada" /></SelectItem>
+                <SelectItem value="AU"><TranslatableText text="Australia" /></SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          {/* Gender Select (New) */}
+          {/* Gender Select */}
           <div className="grid gap-2">
-            <Label htmlFor="gender">Gender</Label>
+            <Label htmlFor="gender">
+                <TranslatableText text="Gender" />
+            </Label>
             <Select name="gender" defaultValue={user.gender || undefined}>
               <SelectTrigger>
-                <SelectValue placeholder="Select gender" />
+                <SelectValue placeholder={<TranslatableText text="Select gender" />} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Male">Male</SelectItem>
-                <SelectItem value="Female">Female</SelectItem>
-                <SelectItem value="Non-binary">Non-binary</SelectItem>
-                <SelectItem value="Prefer not to say">Prefer not to say</SelectItem>
+                <SelectItem value="Male"><TranslatableText text="Male" /></SelectItem>
+                <SelectItem value="Female"><TranslatableText text="Female" /></SelectItem>
+                <SelectItem value="Non-binary"><TranslatableText text="Non-binary" /></SelectItem>
+                <SelectItem value="Prefer not to say"><TranslatableText text="Prefer not to say" /></SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           {/* Read Only Email */}
           <div className="grid gap-2 md:col-span-2">
-            <Label htmlFor="email" className="text-muted-foreground">Email</Label>
+            <Label htmlFor="email" className="text-muted-foreground">
+                <TranslatableText text="Email" />
+            </Label>
             <Input id="email" value={user.email || ''} disabled className="bg-gray-50 text-gray-500" />
           </div>
       </div>
 
       {state?.error && (
-        <p className="text-sm text-red-500 bg-red-50 p-3 rounded-md border border-red-100">{state.error}</p>
+        <div className="text-sm text-red-500 bg-red-50 p-3 rounded-md border border-red-100">
+            <TranslatableText text={state.error} />
+        </div>
       )}
       
       {state?.success && (
-        <p className="text-sm text-green-600 bg-green-50 p-3 rounded-md border border-green-200">
-          Profile updated successfully!
-        </p>
+        <div className="text-sm text-green-600 bg-green-50 p-3 rounded-md border border-green-200">
+          <TranslatableText text="Profile updated successfully!" />
+        </div>
       )}
 
       <div className="pt-4 border-t">

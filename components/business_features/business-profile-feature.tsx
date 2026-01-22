@@ -1,6 +1,7 @@
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
+
 import Image from "next/image";
+// ✅ Import Translation Component
+import { TranslatableText } from "@/components/shared/translatable-text";
 
 export function BusinessProfileFeature() {
   return (
@@ -10,7 +11,6 @@ export function BusinessProfileFeature() {
         {/* Left Column: Image (Phone/Profile Mockup) */}
         <div className="relative h-[500px] w-full flex items-center justify-center order-2 lg:order-1">
            {/* Image Container */}
-
               <div className="relative h-full w-full overflow-hidden ">
                 <Image
                   src="/images/features-banner2.png" 
@@ -26,19 +26,19 @@ export function BusinessProfileFeature() {
           
           <div className="space-y-4">
             <span className="text-[#0892A5] font-medium tracking-wide uppercase text-sm">
-              Business Profile
+              <TranslatableText text="Business Profile" />
             </span>
             <h2 className="text-4xl md:text-5xl font-bold text-black leading-tight tracking-tight">
-              Catch the eye of future customers
+              <TranslatableText text="Catch the eye of future customers" />
             </h2>
           </div>
           
           <div className="space-y-6 text-lg text-gray-600 leading-relaxed">
             <p>
-              Reviews are published right to your profile page on Help, creating an endless stream of fresh and relevant content about your brand.
+              <TranslatableText text="Reviews are published right to your profile page on Help, creating an endless stream of fresh and relevant content about your brand." />
             </p>
             <p>
-              This rich, user-generated content helps improve your rankings in search results, making it easier for new customers to find and trust you.
+              <TranslatableText text="This rich, user-generated content helps improve your rankings in search results, making it easier for new customers to find and trust you." />
             </p>
           </div>
         

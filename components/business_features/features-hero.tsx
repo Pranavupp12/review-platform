@@ -1,6 +1,8 @@
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import Image from "next/image";
+// ✅ Import Translation Component
+import { TranslatableText } from "@/components/shared/translatable-text";
 
 export function FeaturesHero() {
   return (
@@ -11,18 +13,18 @@ export function FeaturesHero() {
         {/* Left Column: Text Content */}
         <div className="space-y-4 max-w-3xl text-center lg:text-left">
           <span className="text-[#0892A5] font-medium tracking-wide uppercase text-sm">
-              Reviews 
+              <TranslatableText text="Reviews" /> 
          </span>
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight leading-tight">
-            Everything you need to <span className="text-[#0892A5]">manage</span> your reputation.
+            <TranslatableText text="Everything you need to" /> <span className="text-[#0892A5]"><TranslatableText text="manage" /></span> <TranslatableText text="your reputation." />
           </h1>
           <p className="text-xl text-gray-600 leading-relaxed">
-            From collecting more reviews to analyzing customer sentiment, our suite of tools helps you turn feedback into your competitive advantage.
+            <TranslatableText text="From collecting more reviews to analyzing customer sentiment, our suite of tools helps you turn feedback into your competitive advantage." />
           </p>
           <div className="flex gap-4 pt-4">
             <Link href="/business/signup?new=true">
               <Button size="lg" className="bg-[#0ABED6] hover:bg-[#0ABED6]/80 text-white rounded-full px-8 h-14 text-lg font-medium transition-all">
-                Get Started Free
+                <TranslatableText text="Get Started Free" />
               </Button>
             </Link>
           </div>

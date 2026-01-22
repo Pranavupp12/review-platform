@@ -1,4 +1,6 @@
 import { Lock, EyeOff, Megaphone } from 'lucide-react';
+// ✅ Import Translation Component
+import { TranslatableText } from "@/components/shared/translatable-text";
 
 export function WhyReviewersTrustSection() {
   const reasons = [
@@ -32,10 +34,10 @@ export function WhyReviewersTrustSection() {
         {/* Section Header */}
         <div className="mb-10 max-w-3xl mx-auto">
           <h2 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight mb-6">
-            Why reviewers trust our platform
+            <TranslatableText text="Why reviewers trust our platform" />
           </h2>
           <p className="text-lg text-gray-600 leading-relaxed">
-            Trust is a two-way street. We work hard to ensure that when you speak, the world listens—safely and freely.
+            <TranslatableText text="Trust is a two-way street. We work hard to ensure that when you speak, the world listens—safely and freely." />
           </p>
         </div>
 
@@ -53,12 +55,12 @@ export function WhyReviewersTrustSection() {
               
               {/* Title */}
               <h3 className="text-xl font-bold text-gray-900">
-                {reason.title}
+                <TranslatableText text={reason.title} />
               </h3>
               
               {/* Description */}
               <p className="text-gray-600 leading-relaxed text-sm">
-                {reason.description}
+                <TranslatableText text={reason.description} />
               </p>
             </div>
           ))}

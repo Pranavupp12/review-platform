@@ -8,25 +8,48 @@ import { BADGE_CONFIG } from "@/lib/badges";
 
 /**
  * 1. CHANGE PLAN
- * When changing a plan, we usually want to RESET any manual overrides 
- * so the company strictly follows the new plan's rules.
+ * When changing a plan, we reset manual overrides AND enforce sponsorship rules.
  */
 export async function updateCompanyPlan(companyId: string, newPlan: Plan) {
   const session = await auth();
   // @ts-ignore
   if (session?.user?.role !== "ADMIN") return { error: "Forbidden" };
 
+  // ✅ LOGIC ADDITION: Determine Sponsorship settings based on the NEW plan
+  let sponsorshipUpdate = {};
+
+  if (newPlan === "SCALE") {
+    // Requirement 1: SCALE gets auto-sponsored (Local)
+    sponsorshipUpdate = {
+      isSponsored: true,
+      sponsoredScope: "LOCAL" // 👈 FIXED: Changed from sponsorScope to sponsoredScope
+    };
+  } else if (newPlan === "CUSTOM") {
+    // Requirement 2: CUSTOM keeps whatever settings it had (No change)
+    sponsorshipUpdate = {}; 
+  } else {
+    // Requirement 3: FREE/GROWTH must have sponsorship disabled
+    sponsorshipUpdate = {
+      isSponsored: false,
+      sponsoredScope: null // 👈 FIXED: Changed from sponsorScope to sponsoredScope
+    };
+  }
+
   try {
     await prisma.company.update({
       where: { id: companyId },
       data: { 
         plan: newPlan,
+        
         // RESET overrides so they inherit the new plan's defaults
         customEmailLimit: null,
         customUpdateLimit: null,
         enableAnalytics: null,
         enableLeadGen: null,
-        hideCompetitors: null
+        hideCompetitors: null,
+
+        // ✅ APPLY SPONSORSHIP ENFORCEMENT
+        ...sponsorshipUpdate
       }
     });
 
@@ -40,25 +63,22 @@ export async function updateCompanyPlan(companyId: string, newPlan: Plan) {
 
 /**
  * 2. MANAGE FEATURES (OVERRIDES)
- * This replaces the old 'toggleCompanyFeature'. 
- * It handles Limits (numbers) AND Toggles (booleans).
+ * (Keep this function exactly as it is in your snippet)
  */
 export async function updateCompanyFeatures(companyId: string, formData: FormData) {
+  // ... existing code ...
   const session = await auth();
   // @ts-ignore
   if (session?.user?.role !== "ADMIN") return { error: "Forbidden" };
 
   try {
-    // 1. Existing Parsing
     const emailRaw = formData.get("emailLimit") as string;
     const updateRaw = formData.get("updateLimit") as string;
     const analyticsRaw = formData.get("analytics") as string;
     const leadGenRaw = formData.get("leadGen") as string;
     const competitorsRaw = formData.get("competitors") as string;
-
-    // ✅ 2. New Badge Parsing
-    // We expect badges to be sent as a JSON string or comma-separated
     const badgesRaw = formData.get("badges") as string; 
+    
     let badgesToSave: string[] | undefined;
 
     if (badgesRaw) {
@@ -79,7 +99,6 @@ export async function updateCompanyFeatures(companyId: string, formData: FormDat
         return val === "" ? null : parseInt(val);
     };
 
-    // 3. Prepare Update Data
     const updateData: any = {
         customEmailLimit: parseNullableInt(emailRaw),
         customUpdateLimit: parseNullableInt(updateRaw),
@@ -88,7 +107,6 @@ export async function updateCompanyFeatures(companyId: string, formData: FormDat
         hideCompetitors: parseTriState(competitorsRaw),
     };
 
-    // Only update badges if they were sent (preserves existing if frontend logic fails)
     if (badgesToSave) {
         updateData.badges = badgesToSave;
     }
@@ -99,7 +117,6 @@ export async function updateCompanyFeatures(companyId: string, formData: FormDat
     });
 
     revalidatePath("/admin/companies");
-    // Also revalidate plans page
     revalidatePath("/admin/plans"); 
     
     return { success: "Features & Badges updated successfully" };

@@ -1,6 +1,8 @@
 import { Quote } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Rating } from '@/components/shared/rating';
+// ✅ Import Translation Component
+import { TranslatableText } from "@/components/shared/translatable-text";
 
 export function BusinessTestimonialSection() {
   const testimonials = [
@@ -27,10 +29,10 @@ export function BusinessTestimonialSection() {
         {/* Header */}
         <div className="text-center mb-10 max-w-3xl mx-auto">
           <h2 className="text-2xl md:text-3xl font-bold text-black tracking-tight mb-4">
-             Trusted by businesses like yours
+             <TranslatableText text="Trusted by businesses like yours" />
           </h2>
           <p className="text-lg text-gray-600">
-            See how companies are using Help to build reputation and grow revenue.
+            <TranslatableText text="See how companies are using Help to build reputation and grow revenue." />
           </p>
         </div>
 
@@ -52,9 +54,9 @@ export function BusinessTestimonialSection() {
               </div>
 
               {/* Content */}
-              <p className="text-lg text-gray-700 leading-relaxed mb-8 font-medium relative z-10">
-                "{testimonial.content}"
-              </p>
+              <div className="text-lg text-gray-700 leading-relaxed mb-8 font-medium relative z-10">
+                "<TranslatableText text={testimonial.content} />"
+              </div>
 
               {/* Author */}
               <div className="flex items-center gap-4">
@@ -63,8 +65,12 @@ export function BusinessTestimonialSection() {
                   <AvatarFallback>{testimonial.name[0]}</AvatarFallback>
                 </Avatar>
                 <div>
-                  <h4 className="font-bold text-gray-900">{testimonial.name}</h4>
-                  <p className="text-sm text-gray-500 font-medium">{testimonial.role}</p>
+                  <h4 className="font-bold text-gray-900">
+                    <TranslatableText text={testimonial.name} />
+                  </h4>
+                  <p className="text-sm text-gray-500 font-medium">
+                    <TranslatableText text={testimonial.role} />
+                  </p>
                 </div>
               </div>
             </div>

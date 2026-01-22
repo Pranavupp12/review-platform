@@ -1,5 +1,6 @@
-
- import Image from "next/image"; 
+import Image from "next/image"; 
+// ✅ Import Translation Component
+import { TranslatableText } from "@/components/shared/translatable-text";
 
 export function ReviewInsightsFeature() {
   return (
@@ -24,19 +25,19 @@ export function ReviewInsightsFeature() {
         <div className="space-y-8 order-1 lg:order-2 max-w-3xl text-center lg:text-left">
           <div className="space-y-4">
             <span className="text-[#0892A5] font-bold tracking-wide uppercase text-sm">
-              Review Insights
+              <TranslatableText text="Review Insights" />
             </span>
             <h2 className="text-4xl md:text-5xl font-bold text-black leading-tight tracking-tight">
-              Make data-driven decisions
+              <TranslatableText text="Make data-driven decisions" />
             </h2>
           </div>
           
           <div className="space-y-6 text-lg text-gray-600 font-medium leading-relaxed mx-auto lg:mx-0">
             <p>
-              Dynamic and practical insights delivered by artificial intelligence. Uncover big picture trends within your reviews.
+              <TranslatableText text="Dynamic and practical insights delivered by artificial intelligence. Uncover big picture trends within your reviews." />
             </p>
             <p>
-              Start doing more of what's working, and less of what's not. Turn customer feedback into your roadmap for growth.
+              <TranslatableText text="Start doing more of what's working, and less of what's not. Turn customer feedback into your roadmap for growth." />
             </p>
           </div>
         

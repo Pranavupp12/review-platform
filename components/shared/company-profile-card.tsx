@@ -1,5 +1,4 @@
 // components/shared/company-profile-card.tsx
-import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Star } from 'lucide-react';

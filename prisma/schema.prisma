@@ -157,6 +157,12 @@ model Company {
   domainVerifyToken    String?    
   domainVerifyEmail    String?
 
+  razorpayCustomerId String? 
+  subscriptionId   String? 
+  planValidityStart DateTime?
+  planValidityEnd   DateTime?
+  payments          Payment[]
+
   categoryId String   @db.ObjectId
   category   Category @relation(fields: [categoryId], references: [id])
 
@@ -167,6 +173,25 @@ model Company {
   @@index([subCategoryId])
   @@index([keywords])
   @@index([name])
+}
+
+model Payment {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  companyId       String   @db.ObjectId
+  company         Company  @relation(fields: [companyId], references: [id])
+  
+  amount          Float
+  currency        String   @default("INR")
+  status          String  
+  paymentMethod   String?  
+  razorpayPaymentId String?
+  razorpayOrderId   String?
+  
+  planType        String   
+  billingCycle    String  
+  
+  invoiceUrl      String?  
+  createdAt       DateTime @default(now())
 }
 
 model ShowcaseItem {

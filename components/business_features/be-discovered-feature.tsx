@@ -1,6 +1,7 @@
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
+
 import Image from "next/image"; 
+// ✅ Import Translation Component
+import { TranslatableText } from "@/components/shared/translatable-text";
 
 export function BeDiscoveredFeature() {
   return (
@@ -11,19 +12,19 @@ export function BeDiscoveredFeature() {
         <div className="space-y-8 order-1 max-w-3xl text-center lg:text-left">
           <div className="space-y-4">
             <span className="text-[#0892A5] font-bold tracking-wide uppercase text-sm">
-              Categories
+              <TranslatableText text="Categories" />
             </span>
             <h2 className="text-4xl md:text-5xl font-bold text-black leading-tight tracking-tight">
-              Be discovered
+              <TranslatableText text="Be discovered" />
             </h2>
           </div>
           
           <div className="space-y-6 text-lg text-gray-600 font-medium leading-relaxed  mx-auto lg:mx-0">
             <p>
-              Make it even easier for consumers to find you and drive traffic to your profile page by selecting up to six business categories.
+              <TranslatableText text="Make it even easier for consumers to find you and drive traffic to your profile page by selecting up to six business categories." />
             </p>
             <p>
-              Or, instantly import them directly from your Google My Business profile to get set up fast.
+              <TranslatableText text="Or, instantly import them directly from your Google My Business profile to get set up fast." />
             </p>
           </div>
           
@@ -31,18 +32,14 @@ export function BeDiscoveredFeature() {
 
         {/* Right Column: Image Placeholder */}
         <div className="relative h-[500px] w-full flex items-center justify-center order-1 lg:order-2">
-
-            
               {/* Main Image Placeholder */}
               <div className="relative h-full w-full overflow-hidden flex items-center justify-center">
-               
                     <Image
                       src="/images/features-banner3.png" 
                       alt="Be Discovered via Categories"
                       fill
                       className="object-cover"
                     />
-          
               </div>
            </div>
         </div>

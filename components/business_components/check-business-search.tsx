@@ -1,17 +1,36 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { findCompanySlug } from "@/lib/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2, Search } from "lucide-react";
 import { toast } from "sonner";
+// ✅ Import Translation Component
+import { TranslatableText } from "@/components/shared/translatable-text";
+import { useTranslation } from "@/components/shared/translation-context";
+import { translateContent } from "@/lib/translation-action";
 
 export function CheckBusinessSearch() {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const { targetLang } = useTranslation();
+  const [placeholder, setPlaceholder] = useState("Enter Company Name or Website URL...");
+
+  // Translate placeholder
+  useEffect(() => {
+    if (targetLang === 'en') {
+        setPlaceholder("Enter Company Name or Website URL...");
+        return;
+    }
+    let isMounted = true;
+    translateContent("Enter Company Name or Website URL...", targetLang).then(res => {
+        if(isMounted && res.translation) setPlaceholder(res.translation);
+    });
+    return () => { isMounted = false; };
+  }, [targetLang]);
 
   const handleCheck = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,7 +56,7 @@ export function CheckBusinessSearch() {
     <section className="bg-gray-50 py-10 border-b border-gray-100">
       <div className="container mx-auto max-w-4xl px-4 text-center">
         <h2 className="text-2xl md:text-3xl font-bold text-black mb-8">
-          See what customers are saying about your business:
+          <TranslatableText text="See what customers are saying about your business:" />
         </h2>
 
         <form onSubmit={handleCheck} className="relative max-w-2xl mx-auto">
@@ -49,9 +68,7 @@ export function CheckBusinessSearch() {
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Enter Company Name or Website URL..."
-              // Added 'pr-36' to prevent text overlapping the button
-              // Increased height to 'h-16' for a better look with the inner button
+              placeholder={placeholder}
               className="h-16 pl-14 pr-36 text-lg rounded-full border-gray-300 shadow-md"
             />
 
@@ -61,7 +78,7 @@ export function CheckBusinessSearch() {
               disabled={loading}
               className="absolute right-2 top-2 bottom-1 rounded-full px-8 h-12 text-base font-regular bg-[#0ABED6] hover:bg-[#0ABED6]/80 text-white min-w-[120px]"
             >
-              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Check"}
+              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <TranslatableText text="Check" />}
             </Button>
           </div>
         </form>

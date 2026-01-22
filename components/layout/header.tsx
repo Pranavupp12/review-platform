@@ -41,7 +41,6 @@ export function Header({ user, variant = 'user' }: HeaderProps) {
     ? [
         { label: 'Features', href: '/business/features' },
         { label: 'Plans', href: '/business/plans' },
-        { label: 'Resources', href: '/business/resources' },
       ]
     : [
         { label: 'Write a Review', href: '/write-review' },
