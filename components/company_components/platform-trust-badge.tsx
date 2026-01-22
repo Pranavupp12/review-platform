@@ -1,5 +1,6 @@
-
 import { Shield, Star } from 'lucide-react';
+// ✅ Import Translation Component
+import { TranslatableText } from "@/components/shared/translatable-text";
 
 export function PlatformTrustBadge() {
   return (
@@ -11,7 +12,7 @@ export function PlatformTrustBadge() {
       </div>
       
       <p className="text-md font-medium text-slate-700 leading-relaxed">
-        Companies on <span className="font-bold text-slate-900">help</span> cannot pay to remove reviews or use incentives to influence ratings.
+        <TranslatableText text="Companies on" /> <span className="font-bold text-slate-900">help</span> <TranslatableText text="cannot pay to remove reviews or use incentives to influence ratings." />
       </p>
     </div>
   );

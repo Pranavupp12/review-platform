@@ -2,9 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import { format } from "date-fns";
-import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ExternalLink, Share } from "lucide-react";
 import Link from "next/link";
 import { Metadata } from "next";
 

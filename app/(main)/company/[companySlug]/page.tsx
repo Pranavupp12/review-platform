@@ -3,10 +3,6 @@ import { getCompanyBySlug, getSimilarCompanies } from '@/lib/data';
 import { CompanyHeader } from '@/components/company_components/company-header';
 import { CompanyPhotoCarousel } from '@/components/company_components/company-photo-carousel';
 import { TransparencyCard } from '@/components/company_components/transparency-card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { BlockRating } from "@/components/shared/block-rating";
-import { Star } from 'lucide-react';
-import { auth } from '@/auth';
 import { ReviewInteractions } from '@/components/company_components/review-interactions';
 import { ViewTracker } from '@/components/company_components/view-tracker';
 import { ReviewImages } from '@/components/company_components/review-images';
@@ -24,10 +20,11 @@ import { BusinessUpdatesCarousel } from '@/components/company_components/busines
 import { RequestQuoteCard } from '@/components/company_components/request-quote-card';
 import { getCompanyFeatures } from "@/lib/plan-config";
 import { ShowcaseCarousel } from '@/components/company_components/showcase-carousel';
-
-// ✅ IMPORTS FOR TRANSLATION SYSTEM
-import { TranslationProvider } from "@/components/shared/translation-context";
-import { FloatingLanguageSelector } from "@/components/shared/floating-language-selector";
+import { auth } from '@/auth';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { BlockRating } from "@/components/shared/block-rating";
+import { Star } from 'lucide-react';
+// ✅ Import TranslatableText only (Remove TranslationProvider)
 import { TranslatableText } from "@/components/shared/translatable-text";
 
 export const dynamic = 'force-dynamic';
@@ -77,18 +74,14 @@ export default async function CompanyProfilePage({ params, searchParams }: PageP
   const reviewIds = company.reviews.map(r => r.id);
   const jsonLd = { "@context": "https://schema.org", "@type": "Organization", "name": company.name };
 
-  // ✅ FIX: The Provider must wrap EVERYTHING returned here
+  // ✅ REMOVED <TranslationProvider> wrapper
   return (
-    <TranslationProvider>
       <div className="min-h-screen bg-white pb-20">
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
         <ViewTracker reviewIds={reviewIds} />
         <CompanyViewTracker companyId={company.id} />
 
         <div className="container mx-auto max-w-7xl px-4 py-4">
-
-          {/* ✅ LANGUAGE SELECTOR */}
-          <FloatingLanguageSelector />
 
           {/* =========================================
               SECTION 1: INFO & CONTACT
@@ -213,7 +206,7 @@ export default async function CompanyProfilePage({ params, searchParams }: PageP
 
               {(tag || search || sort !== 'recent') && (
                 <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg border border-gray-100">
-                  Found <strong>{company.pagination?.totalItems || company.reviews.length}</strong> reviews
+                  <TranslatableText text="Found" /> <strong>{company.pagination?.totalItems || company.reviews.length}</strong> <TranslatableText text="reviews" />
                 </div>
               )}
 
@@ -239,7 +232,7 @@ export default async function CompanyProfilePage({ params, searchParams }: PageP
                                 <div className="flex items-center gap-2 text-xs text-gray-500">
                                   <span>{review.user.country || 'International'}</span>
                                   <span>•</span>
-                                  <span>{review.user.totalReviews} reviews</span>
+                                  <span>{review.user.totalReviews} <TranslatableText text="reviews" /></span>
                                 </div>
                               </div>
                             </div>
@@ -250,15 +243,15 @@ export default async function CompanyProfilePage({ params, searchParams }: PageP
                             <BlockRating value={review.starRating} size="sm" />
                           </div>
                           
-                          {/* ✅ TRANSLATABLE REVIEW TITLE */}
+                          {/* TRANSLATABLE REVIEW TITLE */}
                           <div className="mb-2">
                              <TranslatableText 
-                                text={review.reviewTitle || ""} // Guard against null
+                                text={review.reviewTitle || ""} 
                                 className="font-bold text-lg text-gray-900"
                              />
                           </div>
 
-                          {/* ✅ TRANSLATABLE REVIEW BODY */}
+                          {/* TRANSLATABLE REVIEW BODY */}
                           <div className="mb-4">
                              <TranslatableText 
                                 text={review.comment || ""} 
@@ -297,8 +290,12 @@ export default async function CompanyProfilePage({ params, searchParams }: PageP
                 ) : (
                   <div className="bg-white p-12 text-center">
                     <Star className="h-8 w-8 text-gray-300 mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold text-gray-900">No reviews yet</h3>
-                    <p className="text-gray-500 mb-6">Be the first to share your experience.</p>
+                    <h3 className="text-lg font-semibold text-gray-900">
+                        <TranslatableText text="No reviews yet" />
+                    </h3>
+                    <p className="text-gray-500 mb-6">
+                        <TranslatableText text="Be the first to share your experience." />
+                    </p>
                   </div>
                 )}
               </div>
@@ -306,6 +303,5 @@ export default async function CompanyProfilePage({ params, searchParams }: PageP
           </div>
         </div>
       </div>
-    </TranslationProvider>
   );
 }

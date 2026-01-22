@@ -13,7 +13,7 @@ import { TranslatableText } from "@/components/shared/translatable-text";
 
 export function Footer() {
   return (
-    <footer className="bg-[#0892A5] text-white mt-20">
+    <footer className="bg-[#0892A5] text-white">
       <div className="container mx-auto max-w-7xl px-6 md:px-12">
         
         {/* --- ROW 1: Link Columns --- */}

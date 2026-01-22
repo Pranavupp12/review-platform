@@ -4,6 +4,8 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+// ✅ Import Translation Component
+import { TranslatableText } from "@/components/shared/translatable-text";
 
 export function FAQSection() {
   const faqs = [
@@ -49,10 +51,12 @@ export function FAQSection() {
           {faqs.map((faq, index) => (
             <AccordionItem key={index} value={`item-${index}`}>
               <AccordionTrigger className="text-left text-lg font-medium text-gray-900 hover:text-[#0ABED6] transition-colors">
-                {faq.question}
+                {/* ✅ Translate Question */}
+                <TranslatableText text={faq.question} />
               </AccordionTrigger>
               <AccordionContent className="text-gray-600 leading-relaxed pb-6 text-base">
-                {faq.answer}
+                {/* ✅ Translate Answer */}
+                <TranslatableText text={faq.answer} />
               </AccordionContent>
             </AccordionItem>
           ))}

@@ -1,8 +1,6 @@
-// components/company/company-header.tsx
-
 import Image from 'next/image';
 import { BlockRating } from '@/components/shared/block-rating';
-import { Globe, MapPin, ShieldCheck } from 'lucide-react';
+import { ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 import {Button} from "@/components/ui/button";
 import { Breadcrumb } from '@/components/ui/breadcrumb';
@@ -12,6 +10,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+// ✅ Import Translation Component
+import { TranslatableText } from "@/components/shared/translatable-text";
 
 type CompanyHeaderProps = {
   id: string;
@@ -42,10 +42,11 @@ export function CompanyHeader({
   categorySlug,
   isLoggedIn,
 }: CompanyHeaderProps) {
-  // Clean up the URL for display (remove https://)
   const displayWebsite = websiteUrl?.replace(/(^\w+:|^)\/\//, '').replace(/\/$/, '');
 
-  // 2. Define Breadcrumb Items
+  // Breadcrumbs usually take simple strings for labels, but if the Breadcrumb component supports it,
+  // we could update it. For now, assuming it takes strings, we might leave breadcrumbs as is 
+  // or handle translation inside the Breadcrumb component itself.
   const breadcrumbItems = [
     { label: "Categories", href: "/categories" },
     { label: categoryName, href: `/categories/${categorySlug}` },
@@ -86,7 +87,7 @@ export function CompanyHeader({
           {/* Info Section */}
           <div className="flex-1 space-y-3">
             <h1 className="text-3xl md:text-4xl font-extrabold text-[#0892A5] tracking-tight">
-              {name}
+              <TranslatableText text={name}/>
             </h1>
             
             {/* Rating Row */}
@@ -95,7 +96,7 @@ export function CompanyHeader({
                 <BlockRating value={rating} size="md" />
               </div>
               <span className="text-lg font-bold text-gray-900">{rating.toFixed(1)}</span>
-              <span className="text-gray-500">| {reviewCount} reviews</span>
+              <span className="text-gray-500">| {reviewCount} <TranslatableText text="reviews" /></span>
               
               {/* Trust Badge:Only show if claimed */}
               {claimed && (
@@ -104,12 +105,12 @@ export function CompanyHeader({
                     <TooltipTrigger asChild>
                       <div className="hidden md:flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-100 px-2.5 py-1 rounded-full ml-2 cursor-help">
                         <ShieldCheck className="h-3.5 w-3.5" />
-                        Verified Company
+                        <TranslatableText text="Verified Company" />
                       </div>
                     </TooltipTrigger>
                     <TooltipContent className="max-w-[250px] bg-gray-900 text-white border-gray-800">
                       <p className="text-xs leading-relaxed">
-                       This company has claimed their Help profile as their own. Any company can claim theirs for free to reply to reviews, ask customers to review them, and more.
+                        <TranslatableText text="This company has claimed their Help profile as their own. Any company can claim theirs for free to reply to reviews, ask customers to review them, and more." />
                       </p>
                     </TooltipContent>
                   </Tooltip>
@@ -120,10 +121,10 @@ export function CompanyHeader({
 
           {/* Action Column (Write Review) */}
           <Link href={writeReviewUrl}>
-                 <Button className="w-full md:w-auto bg-[#0ABED6] hover:bg-[#0ABED6]/80 text-white font-bold h-12 px-8 text-base shadow-sm rounded-full">
-                   Write a Review
-                 </Button>
-              </Link>
+             <Button className="w-full md:w-auto bg-[#0ABED6] hover:bg-[#0ABED6]/80 text-white font-bold h-12 px-8 text-base shadow-sm rounded-full">
+               <TranslatableText text="Write a Review" />
+             </Button>
+          </Link>
 
         </div>
       </div>

@@ -6,13 +6,15 @@ import { BlockRating } from "@/components/shared/block-rating";
 import { ArrowRight, ArrowLeft, Info } from "lucide-react";
 import { useRef } from "react";
 import { Button } from "@/components/ui/button";
+// ✅ Import Translation Component
+import { TranslatableText } from "@/components/shared/translatable-text";
 
 interface SimilarCompany {
   id: string;
   name: string;
   slug: string;
   logoImage?: string | null;
-  websiteUrl?: string | null; // Added this
+  websiteUrl?: string | null; 
   rating: number;
   reviewCount: number;
   address?: string | null;
@@ -28,7 +30,6 @@ export function SimilarCompaniesCarousel({ categoryName, companies }: SimilarCom
 
   if (!companies || companies.length === 0) return null;
 
-  // Helper to strip https/www for display (e.g. "driveway.com")
   const getDomain = (url?: string | null) => {
     if (!url) return "";
     try {
@@ -39,10 +40,9 @@ export function SimilarCompaniesCarousel({ categoryName, companies }: SimilarCom
     }
   };
 
-  // Scroll handlers
   const scroll = (direction: 'left' | 'right') => {
     if (scrollContainerRef.current) {
-      const scrollAmount = 300; // Approx card width
+      const scrollAmount = 300; 
       scrollContainerRef.current.scrollBy({
         left: direction === 'right' ? scrollAmount : -scrollAmount,
         behavior: 'smooth'
@@ -55,7 +55,8 @@ export function SimilarCompaniesCarousel({ categoryName, companies }: SimilarCom
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
           <h2 className="text-xl font-bold text-gray-900">
-           Similar companies in {categoryName}
+           {/* ✅ Translatable Header */}
+           <TranslatableText text="Similar companies in" /> <TranslatableText text={categoryName} />
           </h2>
         </div>
 
@@ -94,7 +95,7 @@ export function SimilarCompaniesCarousel({ categoryName, companies }: SimilarCom
             {/* Top Section: Logo & Name */}
             <div>
               <div className="mb-4">
-                 <Avatar className="h-14 w-14 rounded-lg"> {/* Square-ish rounded logo */}
+                 <Avatar className="h-14 w-14 rounded-lg"> 
                   <AvatarImage src={company.logoImage || ''} className="object-cover" />
                   <AvatarFallback className="rounded-lg text-xl font-bold text-gray-500 bg-gray-100">
                     {company.name.substring(0, 1)}
@@ -104,6 +105,7 @@ export function SimilarCompaniesCarousel({ categoryName, companies }: SimilarCom
 
               <div>
                 <h3 className="font-bold text-gray-900 text-base leading-tight group-hover:underline mb-1">
+                  {/* Company names are usually not translated, but you can wrap if desired */}
                   {company.name}
                 </h3>
                 <p className="text-sm text-gray-500 truncate">
@@ -116,7 +118,6 @@ export function SimilarCompaniesCarousel({ categoryName, companies }: SimilarCom
             <div className="flex items-center gap-2 mt-4">
               <div className="flex-shrink-0">
                 <BlockRating value={company.rating} size="sm" /> 
-                {/* Ensure size="md" or "sm" matches your BlockRating props */}
               </div>
               <span className="text-sm font-medium text-gray-600">
                  {company.rating.toFixed(1)} 

@@ -13,6 +13,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+// ✅ Import Translation Component
+import { TranslatableText } from "@/components/shared/translatable-text";
 
 interface DeleteReviewDialogProps {
   open: boolean;
@@ -47,9 +49,11 @@ export function DeleteReviewDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Delete Review</DialogTitle>
+          <DialogTitle>
+             <TranslatableText text="Delete Review" />
+          </DialogTitle>
           <DialogDescription className="py-3">
-            Are you sure you want to delete this review? This action cannot be undone.
+             <TranslatableText text="Are you sure you want to delete this review? This action cannot be undone." />
           </DialogDescription>
         </DialogHeader>
         
@@ -59,7 +63,7 @@ export function DeleteReviewDialog({
             onClick={() => setOpen(false)} 
             disabled={isDeleting}
           >
-            Cancel
+            <TranslatableText text="Cancel" />
           </Button>
           
           <Button 
@@ -71,10 +75,10 @@ export function DeleteReviewDialog({
             {isDeleting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Deleting...
+                <TranslatableText text="Deleting..." />
               </>
             ) : (
-              "Delete"
+              <TranslatableText text="Delete" />
             )}
           </Button>
         </DialogFooter>

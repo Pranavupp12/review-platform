@@ -5,6 +5,7 @@ import React from "react";
 import Link from "next/link";
 import { Home, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { TranslatableText } from "../shared/translatable-text";
 
 export interface BreadcrumbItem {
   label: string;
@@ -35,11 +36,11 @@ export function Breadcrumb({ items, className }: BreadcrumbProps) {
           <ChevronRight className="h-5 w-5 " />
           {item.current ? (
             <span className="text-[#0892A5] font-semibold" aria-current="page">
-              {item.label}
+              <TranslatableText text={item.label}/>
             </span>
           ) : (
             <Link href={item.href} className="hover:text-foreground transition-colors">
-              {item.label}
+              <TranslatableText text={item.label}/>
             </Link>
           )}
         </React.Fragment>

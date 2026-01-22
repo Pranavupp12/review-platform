@@ -12,6 +12,8 @@ import {
 import Image from "next/image";
 import { CompanyType } from "@prisma/client";
 import { ShowcaseModal } from "./showcase-modal";
+// ✅ Import Translation Component
+import { TranslatableText } from "@/components/shared/translatable-text";
 
 interface ShowcaseCarouselProps {
   items: any[];
@@ -26,11 +28,9 @@ export function ShowcaseCarousel({ items, type, companyName, companyLogo }: Show
 
   if (!items || items.length === 0) return null;
 
-  // ✅ Simplified Logic: Default to SERVICE if null
   const safeType = type || "SERVICE";
   const isProduct = safeType === "PRODUCT";
 
-  // Handle Card Click
   const handleItemClick = (index: number) => {
     setSelectedIndex(index);
     setModalOpen(true);
@@ -40,9 +40,9 @@ export function ShowcaseCarousel({ items, type, companyName, companyLogo }: Show
     <>
       <div className="mb-4">
         <div className="flex items-center gap-2 mb-4">
-
           <h2 className="text-xl font-bold text-black">
-              {isProduct ? "Our Products" : "Our Services"}
+              {/* ✅ Translatable Header */}
+              <TranslatableText text={isProduct ? "Our Products" : "Our Services"} />
           </h2>
         </div>
 
@@ -52,9 +52,8 @@ export function ShowcaseCarousel({ items, type, companyName, companyLogo }: Show
               <CarouselItem key={item.id} className="pl-4 md:basis-1/2 lg:basis-1/3">
                 <Card 
                     onClick={() => handleItemClick(index)}
-                    className="h-full cursor-pointer flex flex-col group"
+                    className="h-full cursor-pointer flex flex-col group py-0"
                 >
-                  {/* Show Image ONLY for Products or if specifically added */}
                   {item.images?.[0] && (
                       <div className="relative h-48 w-full bg-gray-100 overflow-hidden">
                           <Image 
@@ -66,16 +65,19 @@ export function ShowcaseCarousel({ items, type, companyName, companyLogo }: Show
                       </div>
                   )}
                   
-                  <CardContent className=" flex flex-col flex-grow">
-                    <h3 className="text-md font-bold text-gray-900 mb-2 group-hover:text-[#0892A5] transition-colors">
-                        {item.name}
+                  <CardContent className=" flex flex-col flex-grow py-4">
+                    <h3 className="text-xl font-bold text-gray-900 group-hover:text-[#0892A5] transition-colors">
+                        {/* ✅ Translatable Item Name */}
+                        <TranslatableText text={item.name} />
                     </h3>
-                    <p className="text-xs text-gray-600 leading-relaxed line-clamp-3">
-                      {item.description}
-                    </p>
+                    <div className="text-xs text-gray-600 leading-relaxed line-clamp-3">
+                      {/* ✅ Translatable Description */}
+                      <TranslatableText text={item.description} />
+                    </div>
 
-                    <div className="mt-auto pt-4 text-black group-hover:text-[#0892A5] text-xs font-bold uppercase tracking-wide group-hover:underline">
-                        View Details →
+                    <div className="mt-auto pt-2 text-[#0892A5] group-hover:text-[#0892A5] text-xs font-bold uppercase tracking-wide group-hover:underline">
+                        {/* ✅ Translatable Link Text */}
+                        <TranslatableText text="View Details" /> →
                     </div>
 
                   </CardContent>
@@ -99,7 +101,6 @@ export function ShowcaseCarousel({ items, type, companyName, companyLogo }: Show
         initialStartIndex={selectedIndex}
         companyName={companyName}
         companyLogo={companyLogo}
-        // ✅ Explicitly pass the strict type
         type={isProduct ? "PRODUCT" : "SERVICE"}
       />
     </>

@@ -1,6 +1,7 @@
-// components/auth/social-button.tsx
 import { socialLogin } from '@/lib/actions';
 import { Button } from '@/components/ui/button';
+// ✅ Import Translation Component
+import { TranslatableText } from "@/components/shared/translatable-text";
 
 export function SocialButton({ callbackUrl = "/dashboard" }: { callbackUrl?: string }) {
   return (
@@ -27,7 +28,7 @@ export function SocialButton({ callbackUrl = "/dashboard" }: { callbackUrl?: str
             fill="#EA4335"
           />
         </svg>
-        Continue with Google
+        <TranslatableText text="Continue with Google" />
       </Button>
     </form>
   );

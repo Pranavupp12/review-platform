@@ -1,4 +1,6 @@
-import { Scale } from 'lucide-react';
+
+// ✅ Import Translator
+import { TranslatableText } from "@/components/shared/translatable-text";
 
 export function ScoringHero() {
   return (
@@ -8,10 +10,10 @@ export function ScoringHero() {
       
       <div className="container mx-auto max-w-5xl px-4 relative z-10">
         <h1 className="text-4xl md:text-5xl font-bold mb-6 tracking-tight">
-          A Fair Start for Everyone
+          <TranslatableText text="A Fair Start for Everyone" />
         </h1>
         <p className="text-gray-200 text-lg md:text-xl leading-relaxed max-w-2xl mx-auto">
-          Trust isn't built overnight. Our "Smart Scoring" system is designed to level the playing field, ensuring that a single lucky review doesn't outweigh years of consistent service.
+          <TranslatableText text="Trust isn't built overnight. Our 'Smart Scoring' system is designed to level the playing field, ensuring that a single lucky review doesn't outweigh years of consistent service." />
         </p>
       </div>
     </div>

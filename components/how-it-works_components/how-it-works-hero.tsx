@@ -1,5 +1,7 @@
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+// ✅ Import Translation Component
+import { TranslatableText } from "@/components/shared/translatable-text";
 
 export function HowItWorksHero() {
   return (
@@ -9,16 +11,16 @@ export function HowItWorksHero() {
       
       <div className="container mx-auto max-w-6xl px-4 text-center relative z-10">
         <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-6 leading-tight">
-          Behind every review is an <br/>
-          <span className="text-white">experience</span> that matters.
+          <TranslatableText text="Behind every review is an" /> <br/>
+          <span className="text-white"><TranslatableText text="experience" /></span> <TranslatableText text="that matters." />
         </h1>
         <p className="text-lg md:text-xl text-gray-100 mb-8 max-w-2xl mx-auto leading-relaxed">
-          We bridge the gap between businesses and consumers. Here is how we ensure those connections are honest, transparent, and helpful for everyone.
+          <TranslatableText text="We bridge the gap between businesses and consumers. Here is how we ensure those connections are honest, transparent, and helpful for everyone." />
         </p>
         <div className="flex justify-center gap-4">
           <Link href="/write-review">
             <Button size="lg" className="bg-white hover:bg-[#0ABED6] hover:text-white text-[#0ABED6] rounded-full h-12 px-8 font-semibold">
-              Write a review
+              <TranslatableText text="Write a review" />
             </Button>
           </Link>
         </div>

@@ -1,4 +1,6 @@
 import { Star, MessageCircle, Building2, FileText } from 'lucide-react';
+// ✅ Import Translation Component
+import { TranslatableText } from "@/components/shared/translatable-text";
 
 export function StatsSection() {
   const stats = [
@@ -39,24 +41,24 @@ export function StatsSection() {
               key={index} 
               className="flex flex-col items-center space-y-4 group"
             >
-              {/* Icon Circle */}
               <div className="h-16 w-16 rounded-full bg-[#0892A5] flex items-center justify-center mb-2 group-hover:scale-110 transition-transform duration-300">
                 <stat.icon className="h-8 w-8 text-white" strokeWidth={1.5} />
               </div>
               
-              {/* Number */}
+              {/* Number (Usually kept as-is, but wrapped just in case) */}
               <h3 className="text-3xl font-bold text-white tracking-tight">
-                {stat.value}
+                <TranslatableText text={stat.value} />
               </h3>
               
-              {/* Label & Description */}
               <div className="space-y-1 max-w-[200px]">
                 <p className="font-bold text-white text-lg">
-                  {stat.label}
+                  {/* ✅ Translate Label */}
+                  <TranslatableText text={stat.label} />
                 </p>
-                <p className="text-sm text-white leading-relaxed">
-                  {stat.description}
-                </p>
+                <div className="text-sm text-white leading-relaxed">
+                  {/* ✅ Translate Description */}
+                  <TranslatableText text={stat.description} />
+                </div>
               </div>
             </div>
           ))}

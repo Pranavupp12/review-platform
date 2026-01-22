@@ -5,6 +5,8 @@ import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BusinessUpdateModal, BusinessUpdateType } from "./business-update-modal";
+// ✅ Import Translation Component
+import { TranslatableText } from "@/components/shared/translatable-text";
 
 interface BusinessUpdatesCarouselProps {
   updates: BusinessUpdateType[];
@@ -41,7 +43,8 @@ export function BusinessUpdatesCarousel({ updates, companyName, companyLogo }: B
       <div className="w-full py-6 mb-8 border-b border-gray-100">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold text-gray-900">
-            Updates From This Business
+            {/* ✅ Translatable Header */}
+            <TranslatableText text="Updates From This Business" />
           </h2>
           
           {updates.length > 2 && (
@@ -66,9 +69,6 @@ export function BusinessUpdatesCarousel({ updates, companyName, companyLogo }: B
               onClick={() => handleCardClick(index)}
               className="flex-none w-[90vw] md:w-[calc(50%-8px)] h-40 bg-white border border-gray-200 rounded-xl overflow-hidden cursor-pointer transition-all duration-200 snap-start group flex flex-row"
             >
-              {/* CHANGE: Reduced width from 'w-36 md:w-48' to 'w-28 md:w-32' 
-                 This gives more room for the text content.
-              */}
               <div className="relative w-28 md:w-32 h-full bg-gray-100 shrink-0">
                 <Image 
                   src={update.imageUrl} 
@@ -79,20 +79,23 @@ export function BusinessUpdatesCarousel({ updates, companyName, companyLogo }: B
                 />
               </div>
               
-              {/* Content Section: Takes remaining width automatically */}
+              {/* Content Section */}
               <div className="p-4 flex flex-col justify-between flex-grow min-w-0">
                 <div>
                   <h3 className="font-bold text-gray-900 mb-1 line-clamp-2 text-sm md:text-base leading-snug group-hover:text-[#0892A5] transition-colors">
-                    {update.title}
+                    {/* ✅ Translatable Title */}
+                    <TranslatableText text={update.title} />
                   </h3>
-                  <p className="text-xs md:text-sm text-gray-500 line-clamp-2 leading-relaxed">
-                    {update.content}
-                  </p>
+                  <div className="text-xs md:text-sm text-gray-500 line-clamp-2 leading-relaxed">
+                    {/* ✅ Translatable Content */}
+                    <TranslatableText text={update.content} />
+                  </div>
                 </div>
                 
                 <div className="pt-2">
                     <span className="text-xs font-semibold text-[#0892A5] group-hover:underline inline-flex items-center">
-                      Read more <ChevronRight className="h-3 w-3 ml-0.5" />
+                      {/* ✅ Translatable Link Text */}
+                      <TranslatableText text="Read more" /> <ChevronRight className="h-3 w-3 ml-0.5" />
                     </span>
                 </div>
               </div>

@@ -8,6 +8,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+// ✅ Import Translation Component
+import { TranslatableText } from "@/components/shared/translatable-text";
 
 interface TransparencyCardProps {
   companyName: string;
@@ -22,31 +24,15 @@ export function TransparencyCard({ companyName, badges = [], plan = "FREE" }: Tr
 
   let finalBadges: string[] = [];
 
-  // ✅ FIX: Handle Custom Plan Differently
   if (normalizedPlan === "CUSTOM") {
-    // For Custom Plans, we trust the DB 'badges' array 100%. 
-    // The Admin has full manual control, so we don't strip anything out.
     finalBadges = [...badges];
   } else {
-    // For Standard Plans (Free, Growth, Scale), we enforce the rules:
-    
-    // 1. Get Automatic Badges for the CURRENT Plan
     const currentPlanBadges = PLAN_AUTO_BADGES[normalizedPlan] || [];
-
-    // 2. Identify badges that are "owned" by the Plan System
-    const allPlanBadges = new Set(
-      Object.values(PLAN_AUTO_BADGES).flat()
-    );
-
-    // 3. Filter DB List: Remove any badge that is supposed to be managed by a Plan.
-    // (This prevents a Free user from keeping 'Category Leader' if they downgrade)
+    const allPlanBadges = new Set(Object.values(PLAN_AUTO_BADGES).flat());
     const manualBadges = badges.filter(b => !allPlanBadges.has(b));
-
-    // 4. Merge: (Clean Manual Badges) + (Enforced Plan Badges)
     finalBadges = Array.from(new Set([...manualBadges, ...currentPlanBadges]));
   }
 
-  // 5. Filter out 'MOST_RELEVANT' (If you want this hidden from this specific card)
   const visibleBadges = finalBadges.filter(badgeId => badgeId !== "MOST_RELEVANT");
 
   if (visibleBadges.length === 0) {
@@ -63,12 +49,13 @@ export function TransparencyCard({ companyName, badges = [], plan = "FREE" }: Tr
             </TooltipTrigger>
             <TooltipContent className="max-w-[280px] bg-gray-900 text-white border-gray-800" side="top" align="start">
               <p className="text-xs leading-relaxed">
-                This card displays special badges awarded to {companyName} based on their performance and verification status.
+                <TranslatableText text="This card displays special badges awarded to" /> {companyName} <TranslatableText text="based on their performance and verification status." />
               </p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
-        Transparency
+        {/* ✅ Translatable Header */}
+        <TranslatableText text="Transparency" />
       </h3>
       
       <div className="space-y-5">
@@ -83,8 +70,14 @@ export function TransparencyCard({ companyName, badges = [], plan = "FREE" }: Tr
                    <Icon className={`h-5 w-5 ${config.color}`} />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-900">{config.label}</p>
-                  <p className="text-xs text-gray-500">{config.description}</p>
+                  <p className="text-sm font-medium text-gray-900">
+                      {/* ✅ Translatable Badge Label */}
+                      <TranslatableText text={config.label} />
+                  </p>
+                  <p className="text-xs text-gray-500">
+                      {/* ✅ Translatable Badge Description */}
+                      <TranslatableText text={config.description} />
+                  </p>
                 </div>
              </div>
            );

@@ -2,6 +2,8 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
+// ✅ Import Translation Component
+import { TranslatableText } from "@/components/shared/translatable-text";
 
 export function AboutHero() {
   return (
@@ -11,10 +13,10 @@ export function AboutHero() {
         {/* Left Column (Text) */}
         <div className="flex-1 text-left space-y-8">
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 tracking-tight leading-tight">
-            help gives everybody a say
+            <TranslatableText text="help gives everybody a say" />
           </h1>
           <p className="text-lg text-gray-600 max-w-lg leading-relaxed">
-            The world&apos;s largest independent customer feedback platform.
+            <TranslatableText text="The world's largest independent customer feedback platform." />
           </p>
           {/* Buttons Container */}
           <div className="flex flex-col sm:flex-row gap-4">
@@ -22,7 +24,7 @@ export function AboutHero() {
             {/* 1. Primary Button */}
             <Link href="/how-help-works">
               <Button size="lg" className="w-full sm:w-auto bg-[#0ABED6] hover:bg-[#09A8BD] text-white font-semibold rounded-full px-8 h-14 text-base shadow-sm transition-all">
-                How help works
+                <TranslatableText text="How help works" />
               </Button>
             </Link>
 
@@ -33,7 +35,7 @@ export function AboutHero() {
                 size="lg" 
                 className="w-full sm:w-auto text-[#0ABED6] hover:text-[#09A8BD] hover:bg-[#0ABED6]/10 font-semibold rounded-full px-8 h-14 text-base transition-all"
               >
-                Explore our platform
+                <TranslatableText text="Explore our platform" />
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>
@@ -43,7 +45,6 @@ export function AboutHero() {
 
         {/* Right Column (Image) */}
         <div className="flex-1 w-full relative aspect-[4/3] md:aspect-auto md:h-[400px] rounded-2xl overflow-hidden bg-gray-50">
-           {/* Replace '/images/about-hero.jpg' with your actual image path */}
            <Image
               src="/images/about-banner.svg" 
               alt="People connecting through help"

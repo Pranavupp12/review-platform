@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ContactModal, ContactType } from "@/components/contact_components/contact-forms";
+// ✅ Import Translation Component
+import { TranslatableText } from "@/components/shared/translatable-text";
 
 const contactOptions = [
   {
@@ -57,11 +59,10 @@ export default function ContactPage() {
         {/* Header */}
         <div className="text-center max-w-3xl mx-auto mb-16">
           <h1 className="text-3xl font-bold text-gray-900 mb-4">
-            Get in touch with our team
+            <TranslatableText text="Get in touch with our team" />
           </h1>
           <p className="text-lg text-gray-600">
-            We're here to help. Choose the category that best fits your inquiry
-            so we can route you to the right experts.
+            <TranslatableText text="We're here to help. Choose the category that best fits your inquiry so we can route you to the right experts." />
           </p>
         </div>
 
@@ -78,9 +79,11 @@ export default function ContactPage() {
                 >
                   <option.icon className="h-10 w-10" />
                 </div>
-                <CardTitle className="text-xl">{option.title}</CardTitle>
+                <CardTitle className="text-xl">
+                    <TranslatableText text={option.title} />
+                </CardTitle>
                 <CardDescription className="text-base mt-2">
-                  {option.description}
+                    <TranslatableText text={option.description} />
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex-grow">
@@ -91,7 +94,7 @@ export default function ContactPage() {
                   className="w-full text-[#0ABED6] hover:text-[#09A8BD] hover:underline transition-all"
                   onClick={() => handleOpenModal(option.id)}
                 >
-                  Continue
+                  <TranslatableText text="Continue" />
                   <ArrowRight className="h-4 w-4 ml-2 opacity-70 group-hover:opacity-100 transition-opacity" />
                 </Button>
               </CardFooter>

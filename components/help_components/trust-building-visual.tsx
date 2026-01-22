@@ -1,4 +1,6 @@
 import { Sprout, TrendingUp, Medal, ArrowRight } from 'lucide-react';
+// ✅ Import Translator
+import { TranslatableText } from "@/components/shared/translatable-text";
 
 export function TrustBuildingVisual() {
   const steps = [
@@ -32,7 +34,7 @@ export function TrustBuildingVisual() {
         {/* Header */}
         <div className="text-center mb-10 max-w-3xl mx-auto">
           <h2 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight mb-6">
-            How Trust is earned over time
+            <TranslatableText text="How Trust is earned over time" />
           </h2>
         </div>
 
@@ -44,20 +46,20 @@ export function TrustBuildingVisual() {
               key={index} 
               className="relative flex flex-col items-center text-center group px-4"
             >
-              {/* Icon Circle - Matching 'Our Values' Style */}
+              {/* Icon Circle */}
               <div className={`h-24 w-24 rounded-full ${step.bgColor} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 relative z-10`}>
                 <step.icon className={`h-10 w-10 ${step.color}`} strokeWidth={1.5} />
               </div>
 
               {/* Title */}
               <h3 className="text-xl font-bold text-gray-900 mb-3">
-                {step.title}
+                <TranslatableText text={step.title} />
               </h3>
 
               {/* Description */}
-              <p className="text-gray-600 text-lg leading-relaxed">
-                {step.desc}
-              </p>
+              <div className="text-gray-600 text-lg leading-relaxed">
+                <TranslatableText text={step.desc} />
+              </div>
 
             </div>
           ))}

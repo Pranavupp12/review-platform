@@ -7,6 +7,8 @@ import { X, ChevronLeft, ChevronRight, Share, ExternalLink } from "lucide-react"
 import Image from "next/image";
 import { useState, useEffect } from "react";
 import { ShareModal } from "./share-modal";
+// ✅ Import Translation Component
+import { TranslatableText } from "@/components/shared/translatable-text";
 
 export interface BusinessUpdateType {
   id: string;
@@ -47,13 +49,12 @@ export function BusinessUpdateModal({
   const hasNext = currentIndex < updates.length - 1;
   const hasPrev = currentIndex > 0;
 
-  // Generate a dummy URL for sharing (You can replace this with a real logic later)
   const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/updates/${currentUpdate.id}` : '';
+  const dateStr = new Date(currentUpdate.createdAt).toLocaleDateString(undefined, { dateStyle: 'long' });
 
   return (
     <>
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      {/* ... (DialogContent classes remain the same) ... */}
       <DialogContent className="[&>button]:hidden sm:max-w-[900px] w-[95vw] md:h-[550px] p-0 overflow-hidden bg-white border-none rounded-xl flex flex-col md:flex-row gap-0">
         
         {/* Custom Close Button */}
@@ -67,7 +68,7 @@ export function BusinessUpdateModal({
           </button>
         </div>
 
-        {/* LEFT SIDE: Image Section (No changes here) */}
+        {/* LEFT SIDE: Image Section */}
         <div className="relative w-full md:w-[45%] h-64 md:h-full bg-gray-50 flex items-center justify-center overflow-hidden border-r border-gray-100">
            <Image 
              src={currentUpdate.imageUrl} 
@@ -76,7 +77,7 @@ export function BusinessUpdateModal({
              className="object-contain p-2" 
            />
            
-           {/* Navigation Arrows (No changes) */}
+           {/* Navigation Arrows */}
            {updates.length > 1 && (
              <>
                 <Button 
@@ -103,7 +104,7 @@ export function BusinessUpdateModal({
 
         {/* RIGHT SIDE: Content Section */}
         <div className="w-full md:w-[55%] p-6 md:p-8 flex flex-col h-full overflow-y-auto bg-white">
-          {/* Header (No changes) */}
+          {/* Header */}
           <div className="flex items-center gap-3 mb-5">
             <Avatar className="h-12 w-30 ">
               <AvatarImage src={companyLogo || ''} />
@@ -111,31 +112,37 @@ export function BusinessUpdateModal({
             </Avatar>
             <div>
               <p className="font-bold text-gray-900 text-sm">{companyName}</p>
-              <p className="text-xs text-gray-500">{new Date(currentUpdate.createdAt).toLocaleDateString(undefined, { dateStyle: 'long' })}</p>
+              <p className="text-xs text-gray-500">
+                {/* ✅ Translatable Date */}
+                <TranslatableText text={dateStr} />
+              </p>
             </div>
           </div>
 
-          {/* Title & Content (No changes) */}
+          {/* Title & Content */}
           <DialogTitle className="text-2xl md:text-3xl font-extrabold text-gray-900 mb-4 leading-tight">
-            {currentUpdate.title}
+            {/* ✅ Translatable Title */}
+            <TranslatableText text={currentUpdate.title} />
           </DialogTitle>
           <div className="text-gray-700 text-base leading-relaxed whitespace-pre-line mb-6 flex-grow overflow-y-auto pr-2">
-            {currentUpdate.content}
+            {/* ✅ Translatable Content */}
+            <TranslatableText text={currentUpdate.content} />
           </div>
 
-          {/* ================= UPDATED FOOTER LAYOUT ================= */}
+          {/* Footer */}
           <div className="mt-auto flex items-center w-full pt-4 border-t border-gray-100">
             
-            {/* 1. LEARN MORE BUTTON (Extreme Left) */}
+            {/* Learn More Button */}
             {currentUpdate.linkUrl && (
               <Button asChild className="bg-red-600 hover:bg-red-700 text-white font-bold h-10 px-6 text-sm rounded-lg shadow-sm transition-all hover:scale-[1.02]">
                 <a href={currentUpdate.linkUrl} target="_blank" rel="noopener noreferrer">
-                  Learn more <ExternalLink className="ml-2 h-4 w-4 opacity-90" />
+                  {/* ✅ Translatable Button Text */}
+                  <TranslatableText text="Learn more" /> <ExternalLink className="ml-2 h-4 w-4 opacity-90" />
                 </a>
               </Button>
             )}
 
-            {/* 2. SHARE BUTTON (Extreme Right using ml-auto) */}
+            {/* Share Button */}
             <div className="ml-auto">
               <Button 
                 variant="ghost" 
@@ -149,13 +156,10 @@ export function BusinessUpdateModal({
             </div>
             
           </div>
-          {/* ======================================================== */}
-
         </div>
       </DialogContent>
     </Dialog>
 
-    {/* 3. RENDER SHARE MODAL */}
     <ShareModal 
       isOpen={isShareOpen}
       onClose={() => setIsShareOpen(false)}

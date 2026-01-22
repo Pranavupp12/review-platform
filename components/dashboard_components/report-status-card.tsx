@@ -5,6 +5,8 @@ import { dismissReport } from "@/lib/actions";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
+// ✅ Import Translation Component
+import { TranslatableText } from "@/components/shared/translatable-text";
 
 interface ReportStatusCardProps {
   report: {
@@ -15,7 +17,7 @@ interface ReportStatusCardProps {
     createdAt: Date;
     review: {
       company: { name: string }
-    } | null; // Review might be null if deleted
+    } | null; 
   };
 }
 
@@ -54,7 +56,7 @@ export function ReportStatusCard({ report }: ReportStatusCardProps) {
         </div>
         <div>
            <p className="text-xs font-bold text-gray-500 uppercase">
-             {isPending ? "Investigating" : "Resolved"}
+             {isPending ? <TranslatableText text="Investigating" /> : <TranslatableText text="Resolved" />}
            </p>
            <p className="text-xs text-gray-400">
             {displayDate}
@@ -65,23 +67,23 @@ export function ReportStatusCard({ report }: ReportStatusCardProps) {
       {/* Content */}
       <div className="flex-1">
         <p className="font-medium text-gray-900 mb-1">
-          Report: {report.review?.company.name || "Deleted Review"}
+          <TranslatableText text="Report" />: {report.review?.company.name || <TranslatableText text="Deleted Review" />}
         </p>
-        <p className="text-sm text-gray-600 mb-4">
-          Reason: <span className="italic">{report.reason}</span>
-        </p>
+        <div className="text-sm text-gray-600 mb-4">
+          <TranslatableText text="Reason" />: <span className="italic"><TranslatableText text={report.reason} /></span>
+        </div>
       </div>
 
       {/* Resolution Footer */}
       {report.resolution && (
         <div className="mt-auto pt-3 border-t border-gray-50 text-sm text-emerald-700 bg-emerald-50/50 p-2 rounded-md">
-           {report.resolution}
+           <TranslatableText text={report.resolution} />
         </div>
       )}
       
       {isPending && (
         <div className="mt-auto pt-3 border-t border-gray-50 text-xs text-yellow-700 bg-yellow-50/50 p-2 rounded-md">
-           We are reviewing your report.
+           <TranslatableText text="We are reviewing your report." />
         </div>
       )}
     </div>

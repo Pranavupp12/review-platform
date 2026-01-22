@@ -3,11 +3,13 @@
 import { useState } from "react";
 import { Phone, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { trackPhoneClick } from "@/lib/lead-actions"; // ✅ Import Action
+import { trackPhoneClick } from "@/lib/lead-actions"; 
+// ✅ Import Translation Component
+import { TranslatableText } from "@/components/shared/translatable-text";
 
 interface CallToActionCardProps {
   phoneNumber?: string;
-  companyId: string; // ✅ Add companyId prop
+  companyId: string; 
 }
 
 export function CallToActionCard({ phoneNumber, companyId }: CallToActionCardProps) {
@@ -18,10 +20,8 @@ export function CallToActionCard({ phoneNumber, companyId }: CallToActionCardPro
 
   const handleReveal = async () => {
     setLoading(true);
-    // Fire and forget tracking (don't block UI)
     trackPhoneClick(companyId);
     
-    // Simulate slight delay for effect/processing
     setTimeout(() => {
         setIsRevealed(true);
         setLoading(false);
@@ -35,8 +35,12 @@ export function CallToActionCard({ phoneNumber, companyId }: CallToActionCardPro
           <Phone className="h-5 w-5 text-[#0ABED6]" />
         </div>
         <div>
-          <h3 className="font-bold text-gray-900">Call Today</h3>
-          <p className="text-xs text-gray-500">Speak to a representative</p>
+          <h3 className="font-bold text-gray-900">
+            <TranslatableText text="Call Today" />
+          </h3>
+          <p className="text-xs text-gray-500">
+            <TranslatableText text="Speak to a representative" />
+          </p>
         </div>
       </div>
 
@@ -46,11 +50,17 @@ export function CallToActionCard({ phoneNumber, companyId }: CallToActionCardPro
           onClick={handleReveal}
           disabled={loading}
         >
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Call Now"}
+          {loading ? (
+             <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+             <TranslatableText text="Call Now" />
+          )}
         </Button>
       ) : (
         <div className="bg-gray-50 border border-gray-200 rounded-md p-3 text-center animate-in fade-in duration-300">
-          <p className="text-sm text-[#0ABED6] font-medium mb-1">Call us at:</p>
+          <p className="text-sm text-[#0ABED6] font-medium mb-1">
+             <TranslatableText text="Call us at" />:
+          </p>
           <a 
             href={`tel:${phoneNumber}`} 
             className="text-xl font-bold text-[#0ABED6] hover:underline block"

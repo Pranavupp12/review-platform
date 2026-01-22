@@ -1,7 +1,6 @@
-// components/auth/signup-form.tsx
 'use client';
 
-import React, { useActionState } from 'react';
+import React, { useActionState, useState, useEffect } from 'react';
 import { useFormStatus } from 'react-dom';
 import { registerUser } from '@/lib/actions';
 import { Button } from '@/components/ui/button';
@@ -9,15 +8,29 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, Sparkles } from 'lucide-react';
 import Link from 'next/link';
-import Image from 'next/image'; // Import Image
+import Image from 'next/image'; 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { SocialButton } from './social-button';
+// ✅ Import Translation Component
+import { TranslatableText } from "@/components/shared/translatable-text";
+import { useTranslation } from "@/components/shared/translation-context";
+import { translateContent } from "@/lib/translation-action";
+
+const useTranslatedPlaceholder = (text: string) => {
+    const { targetLang } = useTranslation();
+    const [translated, setTranslated] = useState(text);
+    useEffect(() => {
+        if (targetLang === 'en') { setTranslated(text); return; }
+        translateContent(text, targetLang).then(res => { if(res.translation) setTranslated(res.translation) });
+    }, [targetLang, text]);
+    return translated;
+};
 
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
     <Button type="submit" className="w-full bg-[#0ABED6] hover:bg-[#09A8BD] h-11 text-base" disabled={pending}>
-      {pending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Create Account'}
+      {pending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <TranslatableText text="Create Account" />}
     </Button>
   );
 }
@@ -26,16 +39,17 @@ export function SignUpForm() {
   const [state, formAction] = useActionState(registerUser, null);
   const router = useRouter();
   const searchParams = useSearchParams();
-  
-  // Get callbackUrl to pass to social button or redirect logic
   const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
 
   React.useEffect(() => {
     if (state?.success) {
-      // Redirect to login with the success flag
       router.push(`/login?registered=true&callbackUrl=${encodeURIComponent(callbackUrl)}`);
     }
   }, [state?.success, router, callbackUrl]);
+
+  // Translated placeholders
+  const namePlaceholder = useTranslatedPlaceholder("John Doe");
+  const emailPlaceholder = useTranslatedPlaceholder("name@example.com");
 
   return (
     <div className="grid md:grid-cols-2 bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
@@ -61,10 +75,12 @@ export function SignUpForm() {
         <div className="relative z-10 space-y-6">
            <div className="flex items-center gap-2 text-[#0ABED6]">
              <Sparkles className="h-6 w-6" />
-             <span className="font-semibold tracking-wide uppercase text-sm">Join the community</span>
+             <span className="font-semibold tracking-wide uppercase text-sm">
+                 <TranslatableText text="Join the community" />
+             </span>
            </div>
            <p className="text-xl font-medium leading-relaxed">
-             "Join millions of people sharing their experiences. Your reviews help others make better choices and help companies improve."
+             "<TranslatableText text="Join millions of people sharing their experiences. Your reviews help others make better choices and help companies improve." />"
            </p>
            <div className="pt-4 flex gap-4">
               <div className="h-1 w-12 bg-[#0ABED6] rounded-full" />
@@ -77,12 +93,15 @@ export function SignUpForm() {
       <div className="p-8 md:p-12 flex flex-col justify-center h-full">
         
         <div className="text-center space-y-2 mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">Create an account</h1>
-          <p className="text-sm text-gray-500">Share your experience with the world</p>
+          <h1 className="text-2xl font-bold text-gray-900">
+              <TranslatableText text="Create an account" />
+          </h1>
+          <p className="text-sm text-gray-500">
+              <TranslatableText text="Share your experience with the world" />
+          </p>
         </div>
 
         <div className="space-y-6">
-          {/* Pass callbackUrl so if they use Google, they go to the right place */}
           <SocialButton callbackUrl={callbackUrl} />
 
           <div className="relative">
@@ -90,29 +109,31 @@ export function SignUpForm() {
               <span className="w-full border-t" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white px-2 text-muted-foreground">Or register with email</span>
+              <span className="bg-white px-2 text-muted-foreground">
+                  <TranslatableText text="Or register with email" />
+              </span>
             </div>
           </div>
 
           <form action={formAction} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Full Name</Label>
-              <Input id="name" name="name" placeholder="John Doe" required className="h-11" />
+              <Label htmlFor="name"><TranslatableText text="Full Name" /></Label>
+              <Input id="name" name="name" placeholder={namePlaceholder} required className="h-11" />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" name="email" type="email" placeholder="name@example.com" required className="h-11" />
+              <Label htmlFor="email"><TranslatableText text="Email" /></Label>
+              <Input id="email" name="email" type="email" placeholder={emailPlaceholder} required className="h-11" />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password"><TranslatableText text="Password" /></Label>
               <Input id="password" name="password" type="password" placeholder="••••••••" required minLength={6} className="h-11" />
             </div>
 
             {state?.error && (
               <div className="p-3 text-sm text-red-500 bg-red-50 rounded-md border border-red-100">
-                {state.error}
+                <TranslatableText text={state.error} />
               </div>
             )}
 
@@ -120,9 +141,9 @@ export function SignUpForm() {
           </form>
 
           <div className="text-center text-sm text-gray-500">
-            Already have an account?{' '}
+            <TranslatableText text="Already have an account?" />{' '}
             <Link href={`/login?callbackUrl=${encodeURIComponent(callbackUrl)}`} className="font-semibold text-[#0ABED6] hover:underline">
-              Log in
+              <TranslatableText text="Log in" />
             </Link>
           </div>
         </div>

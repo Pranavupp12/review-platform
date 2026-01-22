@@ -7,6 +7,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+// ✅ Import Translation Component
+import { TranslatableText } from "@/components/shared/translatable-text";
 
 interface DashboardStatsProps {
   reviewCount: number;
@@ -27,7 +29,7 @@ export function DashboardStats({
         <div className="flex flex-col items-center">
           <span className="text-2xl font-bold text-gray-900">{reviewCount}</span>
           <span className="text-sm text-gray-500 flex items-center gap-1 group-hover:text-[#0ABED6] transition-colors">
-            <Star className="h-3 w-3" /> Reviews
+            <Star className="h-3 w-3" /> <TranslatableText text="Reviews" />
           </span>
         </div>
       </div>
@@ -41,13 +43,15 @@ export function DashboardStats({
               <div className="flex flex-col items-center">
                 <span className="text-2xl font-bold text-gray-900">{totalReads}</span>
                 <span className="text-sm text-gray-500 flex items-center gap-1 group-hover:text-[#0ABED6] transition-colors">
-                  <Eye className="h-3 w-3" /> Reads
+                  <Eye className="h-3 w-3" /> <TranslatableText text="Reads" />
                 </span>
               </div>
             </div>
           </TooltipTrigger>
           <TooltipContent className="bg-gray-900 text-white border-none text-xs max-w-[200px] text-center">
-            <p>The total number of times your reviews have been viewed by others.</p>
+            <p>
+                <TranslatableText text="The total number of times your reviews have been viewed by others." />
+            </p>
           </TooltipContent>
         </Tooltip>
 
@@ -58,13 +62,15 @@ export function DashboardStats({
               <div className="flex flex-col items-center">
                 <span className="text-2xl font-bold text-gray-900">{totalHelpfulReceived}</span>
                 <span className="text-sm text-gray-500 flex items-center gap-1 group-hover:text-[#0ABED6] transition-colors">
-                  <ThumbsUp className="h-3 w-3" /> Useful
+                  <ThumbsUp className="h-3 w-3" /> <TranslatableText text="Useful" />
                 </span>
               </div>
             </div>
           </TooltipTrigger>
           <TooltipContent className="bg-gray-900 text-white border-none text-xs max-w-[200px] text-center">
-            <p>The total number of people who found your reviews helpful.</p>
+            <p>
+                <TranslatableText text="The total number of people who found your reviews helpful." />
+            </p>
           </TooltipContent>
         </Tooltip>
 

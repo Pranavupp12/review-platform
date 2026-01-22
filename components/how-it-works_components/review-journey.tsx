@@ -1,4 +1,6 @@
 import { PenLine, ShieldCheck, Globe, MessageSquare,ArrowRight } from "lucide-react";
+// ✅ Import Translation Component
+import { TranslatableText } from "@/components/shared/translatable-text";
 
 export function ReviewJourney() {
   const steps = [
@@ -36,13 +38,13 @@ export function ReviewJourney() {
     <div className="py-20 sm:py-10 bg-gray-50 border-t border-gray-100">
       <div className="container mx-auto max-w-6xl px-4">
         <div className="mb-10 text-center max-w-3xl mx-auto ">
-          <h2 className="text-2xl md:text-3xl text-black font-bold">User Journey in a Nutshell</h2>
+          <h2 className="text-2xl md:text-3xl text-black font-bold">
+            <TranslatableText text="User Journey in a Nutshell" />
+          </h2>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 relative">
           
-          {/* REMOVED: The old connector line div */}
-
           {steps.map((step, index) => (
             <div key={index} className="relative flex flex-col items-center text-center group">
               
@@ -52,13 +54,16 @@ export function ReviewJourney() {
               </div>
               
               {/* Text Content */}
-              <h3 className="text-xl font-bold text-gray-900 mb-3">{step.title}</h3>
+              <h3 className="text-xl font-bold text-gray-900 mb-3">
+                {/* ✅ Translate Title */}
+                <TranslatableText text={step.title} />
+              </h3>
               <p className="text-md text-gray-600 leading-relaxed px-2">
-                {step.description}
+                {/* ✅ Translate Description */}
+                <TranslatableText text={step.description} />
               </p>
 
-              {/* --- THE ARROW CONNECTOR ( > ) --- */}
-              {/* Only show if it's NOT the last item */}
+              {/* --- THE ARROW CONNECTOR --- */}
               {index < steps.length - 1 && (
                 <div className="hidden md:block absolute top-10 -right-6 text-[#0892A5] z-0">
                   <ArrowRight className="h-6 w-6" strokeWidth={3} />

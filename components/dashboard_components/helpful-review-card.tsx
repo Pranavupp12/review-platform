@@ -1,11 +1,10 @@
-// components/dashboard/helpful-review-card.tsx
-
 import Link from 'next/link';
 import { BlockRating } from '@/components/shared/block-rating';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ThumbsUp } from 'lucide-react';
-// 1. Import Image Component
 import { ReviewImages } from '@/components/company_components/review-images';
+// ✅ Import Translation Component
+import { TranslatableText } from "@/components/shared/translatable-text";
 
 interface HelpfulReviewCardProps {
   review: {
@@ -15,7 +14,6 @@ interface HelpfulReviewCardProps {
     comment: string | null;
     dateOfExperience: Date;
     createdAt: Date;
-    // 2. Add this field
     relatedImages: string[];
     company: {
       name: string;
@@ -54,16 +52,16 @@ export function HelpfulReviewCard({ review }: HelpfulReviewCardProps) {
           </Avatar>
           <div className="overflow-hidden">
             <p className="text-sm font-bold text-gray-900 truncate">
-              {review.user.name}
+              <TranslatableText text={review.user.name}/>
             </p>
             <p className="text-xs text-gray-500 truncate">
-              on <Link href={`/company/${review.company.slug}`} className="hover:underline text-gray-700">{review.company.name}</Link>
+              <TranslatableText text="on" /> <Link href={`/company/${review.company.slug}`} className="hover:underline text-gray-700">{review.company.name}</Link>
             </p>
           </div>
         </div>
 
         <span className="text-xs text-gray-400 shrink-0 ml-2 mt-1">
-          {displayDate}
+          <TranslatableText text={displayDate}/>
         </span>
       </div>
 
@@ -77,12 +75,14 @@ export function HelpfulReviewCard({ review }: HelpfulReviewCardProps) {
         </div>
 
         <h3 className="font-bold text-gray-900 mb-2 line-clamp-1 text-sm">
-          {review.reviewTitle || 'Untitled'}
+          {/* ✅ Translatable Review Title */}
+          <TranslatableText text={review.reviewTitle || 'Untitled'} />
         </h3>
 
-        <p className="text-gray-600 text-xs leading-relaxed line-clamp-3 mb-4">
-          {review.comment}
-        </p>
+        <div className="text-gray-600 text-xs leading-relaxed line-clamp-3 mb-4">
+          {/* ✅ Translatable Comment */}
+          <TranslatableText text={review.comment || ""} />
+        </div>
 
         {/* 3. RENDER IMAGES HERE */}
         {review.relatedImages && review.relatedImages.length > 0 && (
@@ -94,7 +94,7 @@ export function HelpfulReviewCard({ review }: HelpfulReviewCardProps) {
         {/* Date Pill */}
         <div>
           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 text-gray-600 border border-gray-200">
-            Date of Experience: {experienceDate}
+            <TranslatableText text="Date of Experience" />: {experienceDate}
           </span>
         </div>
       </div>
