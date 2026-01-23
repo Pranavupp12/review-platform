@@ -4,7 +4,7 @@ import { TranslatableText } from "@/components/shared/translatable-text";
 
 export function IntegritySection() {
   return (
-    <section className="py-20 sm:py-10 bg-gray-50 border-t border-gray-100">
+    <section className="py-20 sm:py-10 bg-white ">
       <div className="container mx-auto max-w-6xl px-4">
         
         {/* Header */}

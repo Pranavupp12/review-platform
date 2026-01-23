@@ -227,7 +227,7 @@ export function SearchBar({ className, locations }: SearchBarProps) {
         type="submit" 
         size="lg" 
         disabled={isPending}
-        className="w-full md:w-auto rounded-xl md:rounded-full px-8 bg-[#0ABED6] hover:bg-[#09A8BD] text-white h-12 font-semibold shadow-sm"
+        className="w-full md:w-auto rounded-xl md:rounded-full px-8 bg-[#0ABED6] hover:bg-[#0ABED6]/80 text-white h-12 font-semibold shadow-sm"
       >
         {isPending ? (
             <Loader2 className="h-5 w-5 animate-spin" /> 

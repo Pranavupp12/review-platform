@@ -52,7 +52,7 @@ export function ShowcaseCarousel({ items, type, companyName, companyLogo }: Show
               <CarouselItem key={item.id} className="pl-4 md:basis-1/2 lg:basis-1/3">
                 <Card 
                     onClick={() => handleItemClick(index)}
-                    className="h-full cursor-pointer flex flex-col group py-0"
+                    className="h-full cursor-pointer rounded-none flex flex-col group py-0"
                 >
                   {item.images?.[0] && (
                       <div className="relative h-48 w-full bg-gray-100 overflow-hidden">

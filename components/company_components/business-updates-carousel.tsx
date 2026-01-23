@@ -67,7 +67,7 @@ export function BusinessUpdatesCarousel({ updates, companyName, companyLogo }: B
             <div 
               key={update.id}
               onClick={() => handleCardClick(index)}
-              className="flex-none w-[90vw] md:w-[calc(50%-8px)] h-40 bg-white border border-gray-200 rounded-xl overflow-hidden cursor-pointer transition-all duration-200 snap-start group flex flex-row"
+              className="flex-none w-[90vw] md:w-[calc(50%-8px)] h-40 bg-white border border-gray-200 rounded-none overflow-hidden cursor-pointer transition-all duration-200 snap-start group flex flex-row"
             >
               <div className="relative w-28 md:w-32 h-full bg-gray-100 shrink-0">
                 <Image 

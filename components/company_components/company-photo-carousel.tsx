@@ -99,13 +99,13 @@ export function CompanyPhotoCarousel({ images }: CompanyPhotoCarouselProps) {
               key={index}
               // Clicking an individual image opens the carousel at that index
               onClick={() => openCarousel(index)}
-              className="relative h-52 w-80 shrink-0 cursor-pointer rounded-xl overflow-hidden snap-start border border-gray-200 group"
+              className="relative h-52 w-80 shrink-0 cursor-pointer rounded-none overflow-hidden snap-start border border-gray-200 group"
             >
               <Image
                 src={url}
                 alt={`Company photo ${index + 1}`}
                 fill
-                className="object-cover transition-transform duration-500 group-hover:scale-105"
+                className="object-contain"
               />
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
             </div>
@@ -114,7 +114,7 @@ export function CompanyPhotoCarousel({ images }: CompanyPhotoCarouselProps) {
           {/* UPDATED: "See All" Card also opens the carousel */}
           <div
             onClick={() => openCarousel(0)}
-            className="relative h-52 w-40 shrink-0 flex flex-col items-center justify-center bg-gray-50 rounded-xl border border-dashed border-gray-300 snap-start text-gray-400 cursor-pointer hover:bg-gray-100 transition-colors"
+            className="relative h-52 w-40 shrink-0 flex flex-col items-center justify-center bg-gray-50 rounded-none border border-dashed border-gray-300 snap-start text-gray-400 cursor-pointer hover:bg-gray-100 transition-colors"
           >
             <ImageIcon className="h-8 w-8 mb-2 opacity-50" />
             <span className="text-sm font-medium">See all</span>

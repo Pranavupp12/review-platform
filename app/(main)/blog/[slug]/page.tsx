@@ -167,14 +167,14 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
       />
 
        {/* HEADER SECTION */}
-       <div className="bg-gray-50 border-b border-gray-100">
+       <div className="bg-gray-100 border-b border-gray-100">
             <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 md:py-16">
-                <Link href="/blog" className="inline-flex items-center text-sm font-medium text-gray-500 hover:text-[#0ABED6] mb-8 transition-colors">
+                <Link href="/blog" className="inline-flex items-center text-sm font-medium text-gray-500 hover:text-[#0ABED6] hover:underline mb-8 transition-colors">
                     <ArrowRight className="w-4 h-4 mr-2 rotate-180" /> <TranslatableText text="Back to Blog" />
                 </Link>
                 
                 <div className="space-y-6">
-                    <span className="inline-block px-3 py-1 rounded-full bg-[#0892A5] text-white text-xs font-bold uppercase tracking-wide">
+                    <span className="inline-block  rounded-full  text-[#0892A5] text-sm font-bold uppercase tracking-wide">
                         <TranslatableText text={blog.category} />
                     </span>
 

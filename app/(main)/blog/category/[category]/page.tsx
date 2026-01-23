@@ -22,7 +22,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
     <div className="min-h-screen bg-white pb-20">
       
       {/* 1. FULL WIDTH HEADER SECTION */}
-      <div className="w-full bg-gray-50 border-b border-gray-100">
+      <div className="w-full bg-gray-100 border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
            <Link 
              href="/blog" 

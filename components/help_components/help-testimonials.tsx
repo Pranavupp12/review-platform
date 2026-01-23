@@ -23,7 +23,7 @@ export function HelpTestimonials() {
   ];
 
   return (
-    <section className="pb-10 bg-gray-50 overflow-hidden">
+    <section className="pb-10 bg-white overflow-hidden">
       <div className="container mx-auto max-w-5xl px-4">
         
         {/* Header */}
@@ -38,7 +38,7 @@ export function HelpTestimonials() {
           {testimonials.map((testimonial, index) => (
             <div 
               key={index}
-              className="bg-gray-50 p-8 relative "
+              className="bg-white p-8 relative "
             >
               {/* Quote Icon */}
               <div className="absolute top-8 right-8 text-gray-200">

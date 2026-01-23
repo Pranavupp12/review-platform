@@ -40,19 +40,19 @@ export default async function CategoriesPage() {
     <div className="min-h-screen pb-20 bg-white">
       
       {/* 1. Header Section */}
-      <div className="relative bg-gray-50 text-black py-20 md:py-28 px-4 overflow-hidden">
+      <div className="relative bg-gray-100 text-black py-20 md:py-28 px-4 overflow-hidden">
         
-      <div className="absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-accent/30 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-50 left-120 -translate-x-1/2 -translate-y-1/2 w-40 h-40 bg-accent/30 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 right-0 translate-x-1/2 translate-y-1/2 w-80 h-80 bg-accent/30 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-10 left-10 w-48 h-24 bg-accent/40 rounded-full blur-3xl pointer-events-none" style={{ transform: 'rotate(-20deg)' }} />
-      <div className="absolute hidden sm:block top-6 right-40 w-60 h-32 bg-accent/40 rounded-full blur-3xl pointer-events-none" style={{ transform: 'rotate(10deg)' }} />
+      <div className="absolute hidden sm:block top-25 right-40 w-40 h-32 bg-accent/40 rounded-full blur-3xl pointer-events-none" style={{ transform: 'rotate(10deg)' }} />
 
         {/* Content */}
         <div className="relative z-10 container mx-auto max-w-7xl px-4 text-center">
-          <h1 className="text-3xl md:text-5xl font-bold mb-6 tracking-tight text-gray-900">
+          <h1 className="text-2xl md:text-4xl font-bold mb-6 tracking-tight text-gray-900">
             <TranslatableText text="Explore Companies" />
           </h1>
-          <p className="text-gray-500 text-lg md:text-xl mx-auto mb-10 max-w-2xl">
+          <p className="text-gray-500 text-md md:text-lg mx-auto mb-10 max-w-2xl">
             <TranslatableText text="Browse our comprehensive directory to find the best companies in every industry." />
           </p>
           <div>
@@ -65,8 +65,7 @@ export default async function CategoriesPage() {
       </div>
 
       {/* 2. Categories Grid */}
-      {/* ✅ Changed from -mt-10 to mt-12 to push cards down */}
-      <div className="relative container mx-auto max-w-7xl px-4 mt-12">
+      <div className="relative container mx-auto max-w-6xl px-4 mt-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           
           {categories.map((category, index) => {
@@ -76,17 +75,16 @@ export default async function CategoriesPage() {
             return (
               <div 
                 key={category.id} 
-                className="group flex flex-col bg-white rounded-2xl shadow-sm hover:shadow-xl border border-gray-100 transition-all duration-300 overflow-hidden"
+                className="group flex flex-col bg-white rounded-2xl shadow-sm border border-gray-100  overflow-hidden"
               >
                 {/* Header */}
-                <div className="p-6 border-b border-gray-50 flex items-center gap-4">
+                <div className="p-3  flex items-center gap-4 bg-[#0892A5]">
                   <div 
-                    className="h-14 w-14 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105"
-                    style={{ backgroundColor: `${accentColor}15`, color: accentColor }}
+                    className="h-14 w-14 rounded-xl flex items-center justify-center shrink-0 "
                   >
-                    <Icon className="h-7 w-7" strokeWidth={2} />
+                    <Icon className="h-10 w-10 text-white" strokeWidth={2} />
                   </div>
-                  <h2 className="text-xl font-bold text-gray-900 group-hover:text-[#0892A5] transition-colors">
+                  <h2 className="text-xl font-bold text-white">
                     <TranslatableText text={category.name} />
                   </h2>
                 </div>
@@ -99,7 +97,7 @@ export default async function CategoriesPage() {
                         <li key={sub.id}>
                           <Link 
                             href={`/categories/${category.slug}/${sub.slug}`} 
-                            className="flex items-center justify-between px-4 py-3 rounded-lg text-sm font-medium text-gray-600 hover:text-[#0892A5] hover:bg-gray-50 transition-all group/item"
+                            className="flex items-center justify-between px-4 py-3 rounded-lg text-sm font-medium text-gray-600 hover:text-[#0892A5]  transition-all group/item"
                           >
                             <span>
                                 <TranslatableText text={sub.name} />

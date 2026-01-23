@@ -29,7 +29,7 @@ export default async function BlogPage() {
     <div className="min-h-screen bg-white pb-20">
       
       {/* 1. TOP SUB NAVBAR (Sticky) */}
-      <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b mb-8">
+      <div className="sticky top-0 z-40 bg-gray-100 backdrop-blur-md border-b mb-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             
@@ -69,7 +69,7 @@ export default async function BlogPage() {
 
       {/* 2. FEATURED BLOG HERO */}
       {featuredBlog && (
-        <section className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-16">
+        <section className="w-full bg-gray-50 border border-gray-100 rounded-xl max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 mb-16">
            <FeaturedBlogCard blog={featuredBlog} />
         </section>
       )}

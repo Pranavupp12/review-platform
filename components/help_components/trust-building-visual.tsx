@@ -28,7 +28,7 @@ export function TrustBuildingVisual() {
   ];
 
   return (
-    <section className="py-20 bg-gray-50 overflow-hidden">
+    <section className="py-20 bg-white overflow-hidden">
       <div className="container mx-auto max-w-6xl px-4">
         
         {/* Header */}

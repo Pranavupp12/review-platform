@@ -90,8 +90,8 @@ export function Header({ user, variant = 'user' }: HeaderProps) {
   return (
     <header
       className={cn('sticky top-0 z-50 w-full border-b border-transparent transition-all duration-300', {
-        'bg-gray-50 border-gray-200': scrolled, 
-        'bg-gray-50': !scrolled
+        'bg-gray-100 border-gray-200': scrolled, 
+        'bg-gray-100': !scrolled
       })}
     >
       <nav className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-4">

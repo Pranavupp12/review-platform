@@ -46,7 +46,7 @@ export function CallToActionCard({ phoneNumber, companyId }: CallToActionCardPro
 
       {!isRevealed ? (
         <Button 
-          className="w-full bg-[#0ABED6] hover:bg-[#0ABED6]/80 text-white font-semibold"
+          className="w-full bg-[#0ABED6] rounded-full hover:bg-[#0ABED6]/80 text-white font-semibold"
           onClick={handleReveal}
           disabled={loading}
         >

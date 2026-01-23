@@ -47,11 +47,12 @@ export function HeroReviewCard({
     <Link 
       href={`/company/${companySlug}`}
       className={cn(
-        "block w-[320px] bg-white rounded-md p-5 border border-gray-200 transition-all duration-300 hover:-translate-y-1 cursor-pointer",
+        "block w-[320px] bg-white rounded-none  border border-gray-200 transition-all duration-300 hover:-translate-y-1 cursor-pointer",
         className
       )}
     >
       {/* Header */}
+      <div className='px-5 pt-6'>
       <div className="flex justify-between items-start mb-3">
         <div className="flex items-center gap-2.5">
           <Avatar className="h-8 w-8 border border-gray-100">
@@ -83,10 +84,11 @@ export function HeroReviewCard({
            <TranslatableText text="Date of Experience" />: <TranslatableText text={displayExpDate} />
         </span>
       </div>
+      </div>
 
       {/* Footer (Company) */}
-      <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
-        <div className="h-6 w-6 bg-gray-50 rounded border flex items-center justify-center overflow-hidden relative shrink-0">
+      <div className="flex items-center gap-2 py-6 px-5  bg-gray-50 border-t border-gray-100">
+        <div className="h-6 w-6 rounded flex items-center justify-center overflow-hidden relative shrink-0">
             {companyLogoUrl ? (
               <Image src={companyLogoUrl} alt={companyName} fill className="object-contain p-0.5" />
             ) : (

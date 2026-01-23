@@ -28,13 +28,13 @@ export async function WriteReviewHero() {
   )).sort();
 
   return (
-    <div className="relative bg-gray-50 py-20 md:py-28 px-4 overflow-hidden">
+    <div className="relative bg-gray-100 py-20 md:py-28 px-4 overflow-hidden">
       
       {/* --- Abstract Shapes (Patches) --- */}
-      <div className="absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-accent/30 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-50 left-120 -translate-x-1/2 -translate-y-1/2 w-40 h-40 bg-accent/30 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 right-0 translate-x-1/2 translate-y-1/2 w-80 h-80 bg-accent/30 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-10 left-10 w-48 h-24 bg-accent/40 rounded-full blur-3xl pointer-events-none" style={{ transform: 'rotate(-20deg)' }} />
-      <div className="absolute hidden sm:block top-6 right-40 w-60 h-32 bg-accent/40 rounded-full blur-3xl pointer-events-none" style={{ transform: 'rotate(10deg)' }} />
+      <div className="absolute hidden sm:block top-25 right-40 w-40 h-32 bg-accent/40 rounded-full blur-3xl pointer-events-none" style={{ transform: 'rotate(10deg)' }} />
 
       {/* Content Container */}
       <div className="relative z-10 container mx-auto max-w-4xl text-center">

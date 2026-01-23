@@ -87,7 +87,7 @@ export function RequestQuoteCard({ companyId, companyName }: RequestQuoteCardPro
             </div>
           </div>
           <Button 
-            className="w-full bg-[#0ABED6] hover:bg-[#0ABED6]/80 text-white font-semibold"
+            className="w-full bg-[#0ABED6]  rounded-full hover:bg-[#0ABED6]/80 text-white font-semibold"
             onClick={() => setOpen(true)}
           >
             <TranslatableText text="Request a Quote" />

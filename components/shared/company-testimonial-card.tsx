@@ -83,7 +83,7 @@ export function CompanyTestimonialCard({
   return (
     <div
       className={cn(
-        "group relative w-full h-full rounded-xl border border-gray-200 bg-white shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-between overflow-hidden",
+        "group relative w-full h-full rounded-none border border-gray-200 bg-white flex flex-col justify-between overflow-hidden",
         className
       )}
     >
@@ -92,7 +92,7 @@ export function CompanyTestimonialCard({
         {/* 1. Header: Logo, Name, Rating */}
         <div className="space-y-4">
           <div className="flex items-center gap-4">
-            <Avatar className="h-14 w-14 rounded-lg border bg-gray-50">
+            <Avatar className="h-14 w-14 rounded-lg ">
               <AvatarImage src={logoImage || ""} alt={name} className="object-contain p-1" />
               <AvatarFallback className="rounded-lg font-bold text-lg bg-gray-100 text-gray-500">{name[0]}</AvatarFallback>
             </Avatar>
@@ -186,7 +186,7 @@ export function CompanyTestimonialCard({
 
         {/* 3. Testimonial Slider */}
         {hasTestimonials ? (
-          <div className="mt-auto rounded-lg bg-gray-50 p-4 relative min-h-[160px] flex flex-col justify-between border border-gray-100">
+          <div className="mt-auto rounded-none bg-gray-50 p-4 relative min-h-[160px] flex flex-col justify-between border border-gray-100">
              <AnimatePresence mode="wait">
                <motion.div
                  key={currentIndex}

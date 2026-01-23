@@ -44,7 +44,7 @@ export function FAQSection() {
   ];
 
   return (
-    <div className="py-20 sm:py-15 bg-gray-50 border-t border-gray-100">
+    <div className="py-20 sm:py-15 bg-white">
       <div className="container mx-auto max-w-3xl px-4">
         
         <Accordion type="single" collapsible className="w-full">

@@ -35,7 +35,7 @@ export function ReviewJourney() {
   ];
 
   return (
-    <div className="py-20 sm:py-10 bg-gray-50 border-t border-gray-100">
+    <div className="py-20 sm:py-10 bg-white border-t border-gray-100">
       <div className="container mx-auto max-w-6xl px-4">
         <div className="mb-10 text-center max-w-3xl mx-auto ">
           <h2 className="text-2xl md:text-3xl text-black font-bold">

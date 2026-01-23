@@ -38,7 +38,7 @@ export async function HeroSearch({ reviews }: HeroSearchProps) {
 
   return (
     <>
-      <section className="relative bg-gray-50 py-20 sm:py-10 overflow-hidden">
+      <section className="relative bg-gray-100 py-20 sm:py-10 overflow-hidden">
         
         {/* Abstract shapes */}
       <div className="absolute top-40 left-50 -translate-x-1/2 -translate-y-1/2 w-40 h-40 bg-accent/30 rounded-full blur-3xl pointer-events-none" />

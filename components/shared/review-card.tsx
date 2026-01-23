@@ -52,7 +52,7 @@ export function ReviewCard({
       href={`/company/${companySlug}`} 
       className={cn("block h-full w-full max-w-[350px] mx-auto", className)}
     >
-      <Card className="h-full w-full rounded-md border-gray-200 flex flex-col transition-shadow overflow-hidden">
+      <Card className="h-full w-full rounded-none  border-gray-200 flex flex-col transition-shadow overflow-hidden">
         
         <CardHeader className="pb-3">
           <div className="flex justify-between items-start">
@@ -90,7 +90,7 @@ export function ReviewCard({
 
         <CardFooter className="pt-4 border-t bg-gray-50/50">
           <div className="flex items-center gap-3 overflow-hidden">
-            <div className="h-8 w-8 bg-white border border-gray-200 rounded-md flex items-center justify-center shrink-0 overflow-hidden relative">
+            <div className="h-10 w-10 rounded-md flex items-center justify-center shrink-0 overflow-hidden relative">
                {companyLogoUrl ? (
                  <Image 
                    src={companyLogoUrl} 
